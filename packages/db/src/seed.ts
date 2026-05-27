@@ -1,7 +1,7 @@
 /* eslint-disable */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { prisma, TimesheetStatus } from "./index.js";
+import { prisma, type TimesheetStatus } from "./index.js";
 
 const DEFAULT_PASSWORD = process.env.DEFAULT_PASSWORD ?? "password123";
 

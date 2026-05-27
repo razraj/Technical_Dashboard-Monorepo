@@ -43,4 +43,6 @@ yarn-error.log*
 /packages/db/src/generated/client
 **/*R_NOTES.md
 docs/postman/Timesheet_APIs.postman_collection.json
+
 **/*.yarnclean
+.yarn/*
