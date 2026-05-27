@@ -69,6 +69,7 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
                 // Retry the original request with refreshed cookies
                 return fetchWithAuth(endpoint, options);
             } catch (error) {
+                console.log("🚀 ~ fetchWithAuth ~ error:", error);
                 // Refresh failed, redirect to login
                 const currentUrl = window.location.href;
                 window.location.href = "/login?redirect=" + encodeURIComponent(currentUrl);

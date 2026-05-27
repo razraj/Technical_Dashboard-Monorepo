@@ -32,7 +32,7 @@ export default async function proxy(request: NextRequest) {
         return NextResponse.json({ error: "Invalid host" }, { status: 401 });
     }
 
-    // Skip middleware for login route
+    // Skip proxy for public auth routes
     if (
         ["/auth/login", "/auth/signup", "/auth/forgot-password", "/auth/reset-password", "/auth/refresh"].includes(
             pathname

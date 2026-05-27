@@ -1,6 +1,5 @@
 {
     "$schema": "https://turborepo.dev/schema.json",
-    "ui": "tui",
     "futureFlags": {
         "globalConfiguration": true
     },
@@ -21,8 +20,8 @@
             "AWS_SECRET_ACCESS_KEY",
             "AWS_S3_BUCKET_NAME"
         ],
-        "env": ["NODE_ENV"],
-        "envMode": "strict"
+        "env": ["NODE_ENV", "DATABASE_URL","JWT_SECRET"],
+        "envMode": "strict" //loose
     },
     "tasks": {
         "build": {
@@ -32,6 +31,7 @@
             "description": "Compiles the application for production deployment"
         },
         "lint": {
+            "env": ["NODE_ENV", "DATABASE_URL","JWT_SECRET"],
             "dependsOn": ["^lint"]
         },
         "check-types": {
