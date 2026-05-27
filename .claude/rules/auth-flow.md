@@ -11,11 +11,12 @@ End-to-end authentication flow and routing patterns between the web and backend 
 3. Backend `/auth/login` validates credentials and sets `auth_token` + `refresh_token` HTTP-only cookies on the response
 4. Web stores user metadata in `localStorage` as a best-effort cache (not the auth source of truth)
 5. Subsequent API calls go to `/api/*` (rewritten to backend) with cookies attached
-6. Backend `proxy.ts` reads the cookie, verifies JWT (`jose`), sets `x-user-id` header
+6. Backend `apps/backend/proxy.ts` reads the cookie, verifies JWT (`jose`), sets `x-user-id` header
 7. Protected route handlers read `x-user-id` from `request.headers`
 
 ## Route Handlers
 
+- **Proxy file convention:** Auth gate must live in `apps/backend/proxy.ts` (Next.js 16) with default export `proxy` — not `middleware.ts`.
 - **Protected route handlers:** Read `x-user-id` from headers (set by proxy). Do NOT verify tokens in route handlers.
 - **New API routes:** Add under `apps/backend/app/`. If public, add the path to the skip list in `apps/backend/proxy.ts`.
 - **Web API calls:** Use `fetchWithAuth()` / `fetchWithoutAuth()` from `@/utils/api`.

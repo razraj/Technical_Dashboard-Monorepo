@@ -29,9 +29,9 @@ Verify against disk before assuming features exist (`find apps/backend/app -type
   - `apps/backend` is the **only** layer that talks to the database via `@repo/db`.
   - `apps/web` must **never** import Prisma or DB clients directly.
   - Shared code must live in `packages/*` (e.g. `@repo/db`, `@repo/ui`, `@repo/config-eslint`, `@repo/config-typescript`) — do not copy-paste between apps.
-- **Tooling:** Use **pnpm** (10.20.0) and the existing Turborepo pipeline. Do not introduce yarn/npm lockfiles or change workspace tooling.
+- **Tooling:** Use **yarn workspaces** (lockfile: `yarn.lock`, Node ≥22) and the existing Turborepo pipeline. Do not introduce npm/pnpm lockfiles or change workspace tooling without explicit approval.
 - **Shared configs:** ESLint and TypeScript configs live in `packages/config-*` and are applied via workspace settings — do not inline large config blocks per app.
-- **Turbo `envMode: strict`:** Every env var consumed by a task must be declared in [turbo.jsonc](../../turbo.jsonc).
+- **Turbo `envMode: strict`:** Every env var consumed by a task must be declared in [turbo.jsonc](../../turbo.jsonc) `global.env` — `passThroughEnv` alone does not satisfy `turbo/no-undeclared-env-vars`.
 
 ## 2. Database & Data Access
 
@@ -40,8 +40,9 @@ Verify against disk before assuming features exist (`find apps/backend/app -type
   - Schema: [packages/db/src/prisma/schema.prisma](../../packages/db/src/prisma/schema.prisma)
   - Generated client: `packages/db/src/generated/client`
   - Uses `@prisma/adapter-pg` + `prisma.config.ts` (no `url` in schema).
+  - Root [prisma.config.ts](../../prisma.config.ts) points at `packages/db` schema/migrations; [packages/db/prisma.config.ts](../../packages/db/prisma.config.ts) is the package-local config.
 - **Backend imports the shared client.** Use `@repo/db` via `apps/backend/lib/db.ts` — do not instantiate standalone Prisma clients.
-- **Schema changes:** edit schema → `pnpm db:migrate` → `pnpm db:generate`. Never hand-edit migrations after they're applied.
+- **Schema changes:** edit schema → `yarn workspace @repo/db db:migrate` → `yarn workspace @repo/db db:generate`. Never hand-edit migrations after they're applied.
 - **Neon-compatible:** Connection uses `DATABASE_URL`; Neon's pooler URL is the standard production target.
 
 ## 3. Auth, Cookies & Proxy
@@ -49,7 +50,7 @@ Verify against disk before assuming features exist (`find apps/backend/app -type
 - **Server-verified JWTs in HTTP-only cookies are the single source of truth.** Cookies: `auth_token`, `refresh_token`. Never move primary auth state into `localStorage`, `sessionStorage`, or client-only state — those are best-effort caches at most.
 - **Backend is the auth authority.** Only the backend issues, verifies, or refreshes JWTs. The web app may proxy auth requests but must not implement independent token semantics.
 - **`proxy.ts` is the central auth gate.** It validates the cookie (via `jose`) and injects `x-user-id` for protected routes.
-  - This is **Next.js 16 proxy convention** — do **not** create a `middleware.ts`. They are not interchangeable.
+  - This is **Next.js 16 proxy convention** — file must be `apps/backend/proxy.ts` with `export default async function proxy`. Do **not** create `middleware.ts`; renaming the handler alone won't clear the deprecation warning.
   - New protected backend routes must read `x-user-id` from request headers — do not re-parse cookies or trust client-provided user IDs.
   - Public routes are listed inline in [apps/backend/proxy.ts](../../apps/backend/proxy.ts) — add new public paths there.
   - `allowedHosts` in `proxy.ts` must include any new dev hostname.
@@ -69,7 +70,7 @@ Verify against disk before assuming features exist (`find apps/backend/app -type
 ## 6. Environment Variables
 
 - **Required everywhere:** `DATABASE_URL`, `JWT_SECRET` (must match across web + backend).
-- **Source of truth:** root `.env`, distributed to apps via `pnpm env:cp` (copies to `apps/backend/.env`, `apps/web/.env`, `packages/db/.env`).
+- **Source of truth:** root `.env`, distributed to apps via `yarn env:cp` (copies to `apps/backend/.env`, `apps/web/.env`, `packages/db/.env`).
 - **Vercel:** set per-project in the Vercel dashboard. Backend needs DB + auth secrets; web needs `API_URL` + `JWT_SECRET`.
 
 ## 7. Deployment Topology

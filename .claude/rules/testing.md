@@ -7,7 +7,7 @@ Guidelines for writing and running tests in the monorepo. Backend API tests are 
 ## Current State
 
 - **No test harness configured** — `apps/backend` has no `test` script or vitest config.
-- **`pnpm test`** runs turbo but executes zero tasks until packages define `test` scripts.
+- **`yarn test`** runs turbo but executes zero tasks until packages define `test` scripts.
 
 ## Intended Backend Test Structure
 
@@ -23,9 +23,9 @@ apps/backend/__tests__/
 
 ## Commands (when configured)
 
-- **Run all tests**: `pnpm -F backend test`
-- **Watch mode**: `pnpm -F backend test:watch`
-- **Single file**: `pnpm -F backend test __tests__/api/auth.test.ts`
+- **Run all tests**: `yarn workspace backend test`
+- **Watch mode**: `yarn workspace backend test:watch`
+- **Single file**: `yarn workspace backend test __tests__/api/auth.test.ts`
 
 ## Conventions
 
