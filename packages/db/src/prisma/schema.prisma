@@ -1,0 +1,98 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../generated/client"
+  binaryTargets   = ["native"]
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pg_trgm]
+}
+
+enum TimesheetStatus {
+  COMPLETED
+  INCOMPLETE
+  MISSING
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  username        String    @unique
+  firstName       String?
+  lastName        String?
+  profilePic      String?
+  refreshToken    String?
+  refreshTokenExp DateTime?
+  resetToken      String?   @unique
+  resetTokenExp   DateTime?
+  isDeleted       Boolean   @default(false)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  ActivityLog ActivityLog[] @relation("UserActivityLogs")
+  timesheets  Timesheet[]
+
+  @@index([isDeleted])
+}
+
+model Timesheet {
+  id             String          @id @default(uuid())
+  userId         String
+  sequenceNumber Int
+  status         TimesheetStatus @default(MISSING)
+
+  title       String
+  notes       String?
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
+
+  totalHours    Decimal @default(0) @db.Decimal(6, 2)
+  regularHours  Decimal @default(0) @db.Decimal(6, 2)
+  overtimeHours Decimal @default(0) @db.Decimal(6, 2)
+
+  submittedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries TimesheetEntry[]
+
+  @@unique([userId, sequenceNumber])
+  @@index([userId])
+  @@index([userId, createdAt])
+}
+
+model TimesheetEntry {
+  id          String    @id @default(uuid())
+  timesheetId String
+  workDate    DateTime  @db.Date
+  hours       Decimal   @db.Decimal(4, 2)
+  startTime   DateTime?
+  endTime     DateTime?
+  isOvertime  Boolean   @default(false)
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timesheet Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+
+  @@index([timesheetId])
+  @@index([timesheetId, workDate])
+}
+
+model ActivityLog {
+  id          BigInt  @id @default(autoincrement())
+  description String?
+  type        String
+  user        User    @relation("UserActivityLogs", fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}

@@ -1,0 +1,25 @@
+{
+    "name": "TenT_FS",
+    "private": true,
+    "scripts": {
+        "build": "turbo run build",
+        "dev": "turbo run dev",
+        "env:cp": "cp .env ./apps/backend/.env && cp .env ./apps/web/.env && cp .env ./packages/db/.env",
+        "lint": "turbo run lint",
+        "format": "prettier --write \"apps/**/*.{json,js,ts,tsx,md}\" \"packages/**/*.{json,js,ts,tsx,md}\"",
+        "check-types": "turbo run check-types"
+    },
+    "devDependencies": {
+        "prettier": "^3.7.4",
+        "turbo": "^2.9.15",
+        "typescript": "5.9.2"
+    },
+    "engines": {
+        "node": ">=22.13.0"
+    },
+    "packageManager": "yarn",
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ]
+}
