@@ -26,13 +26,18 @@ export default function Page() {
                         </div>
                     </div>
                 </div>
-                <div className="relative hidden bg-muted lg:block">
-                    <img
-                        src="/placeholder.svg"
-                        alt="Image"
-                        className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-                    />
+                <div className="relative hidden bg-primary lg:block text-white">
+                    <div className="flex h-full flex-col items-center justify-center p-10 text-left">
+                        <h2 className="mb-4 text-3xl font-bold tracking-tight text-left w-full">ticktock</h2>
+                   
+                        <p className="text-lg">
+                            Introducing ticktock, our cutting-edge timesheet web application designed to revolutionize the way you manage employee work hours.
+                            Effortlessly track and monitor attendance and productivity from anywhere, anytime.
+                        </p>
+                    </div>
+               
                 </div>
+           
             </div>
         </AuthGuard>
     );
