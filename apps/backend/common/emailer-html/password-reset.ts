@@ -10,7 +10,7 @@ export function passwordResetHtml(link: string): string {
                                 Reset your password
                             </h1>
                             <p style="color: #cccccc; font-size: 16px; line-height: 1.5; margin: 0 0 30px 0;">
-                                We received a request to reset your Cleanly password. Click the button below to choose a new one. This link expires in one hour.
+                                We received a request to reset your ticktock password. Click the button below to choose a new one. This link expires in one hour.
                             </p>
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                                 <tr>
