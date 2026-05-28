@@ -45,22 +45,32 @@ enum ProjectRole {
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model User {
-  id                     String    @id @default(uuid())
-  email                  String    @unique
-  password               String?
-  username               String    @unique
-  firstName              String?
-  lastName               String?
-  profilePic             String?
-  role                   UserRole  @default(EMPLOYEE)
+  id       String   @id @default(uuid())
+  email    String   @unique @db.VarChar(255) // RFC 5321 max
+  username String   @unique @db.VarChar(30)
+  role     UserRole @default(EMPLOYEE)
+
+  // nullable — null when user authenticates via OAuth instead of password
+  password String?
+
+  firstName  String?
+  lastName   String?
+  profilePic String?
+
+  // Email verification
   emailVerified          DateTime?
   emailVerificationToken String?   @unique
   emailVerificationExp   DateTime?
-  refreshToken           String?
-  refreshTokenExp        DateTime?
-  resetToken             String?   @unique
-  resetTokenExp          DateTime?
-  isDeleted              Boolean   @default(false)
+
+  // Session tokens — stored hashed; expire on logout or rotation
+  refreshToken    String?
+  refreshTokenExp DateTime?
+
+  // Password reset
+  resetToken    String? @unique
+  resetTokenExp DateTime?
+
+  isDeleted Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -72,16 +82,17 @@ model User {
   assignedTasks      Task[]          @relation("TaskAssignee")
   createdTasks       Task[]          @relation("TaskCreator")
 
-  @@index([isDeleted])
+  // No standalone @@index([isDeleted]) — boolean fields have near-zero cardinality
+  // in PostgreSQL and are ignored by the planner without a selective leading column.
 }
 
 model Project {
-  id          String  @id @default(uuid())
-  name        String
+  id          String          @id @default(uuid())
+  name        String          @db.VarChar(100)
   description String?
-  color       String? // hex, e.g. "#3B82F6"
+  color       String?         @db.VarChar(9) // hex: #RGB / #RRGGBB / #RRGGBBAA
   createdById String
-  isDeleted   Boolean @default(false)
+  isDeleted   Boolean         @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -91,7 +102,7 @@ model Project {
   tasks     Task[]
 
   @@index([createdById])
-  @@index([isDeleted])
+  // Trigram GIN index — powers project search/autocomplete when creating a task
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
 }
 
@@ -101,6 +112,7 @@ model ProjectMember {
   userId    String
   role      ProjectRole @default(MEMBER)
   joinedAt  DateTime    @default(now())
+  updatedAt DateTime    @updatedAt // tracks role changes (e.g. MEMBER → OWNER)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -112,12 +124,14 @@ model ProjectMember {
 model Task {
   id             String     @id @default(uuid())
   projectId      String
-  title          String
+  title          String     @db.VarChar(255)
   description    String?
   type           TaskType
   status         TaskStatus @default(TODO)
   estimatedHours Decimal?   @db.Decimal(6, 2)
-  assignedToId   String? // defaults to createdById in app logic
+  // Defaults to createdById in app logic; nullable so the field can be cleared
+  // if the assigned user is removed from the project.
+  assignedToId   String?
   createdById    String
   dueDate        DateTime?  @db.Date
   isDeleted      Boolean    @default(false)
@@ -131,23 +145,30 @@ model Task {
   entries    TimesheetEntry[]
 
   @@index([projectId])
-  @@index([assignedToId])
-  @@index([createdById])
+  // Composite [assignedToId, status] — "show me my active tasks" (primary employee view)
+  @@index([assignedToId, status])
+  // Composite [createdById, status] — "tasks I created with status X" (PM / employee view)
+  @@index([createdById, status])
+  // Composite [projectId, status] — "open tasks in this project" (project detail view)
   @@index([projectId, status])
-  @@index([isDeleted])
 }
 
 model Timesheet {
-  id             String          @id @default(uuid())
-  userId         String
-  sequenceNumber Int
-  status         TimesheetStatus @default(MISSING)
+  id     String @id @default(uuid())
+  userId String
 
-  title       String
-  notes       String?
+  // Sequential per-user counter; used for display ordering and backward compatibility.
+  // @@unique([userId, periodStart]) is the canonical uniqueness key for upserts.
+  sequenceNumber Int
+
+  status TimesheetStatus @default(MISSING)
+  title  String          @db.VarChar(100) // e.g. "Week of 2026-05-26"
+  notes  String?
+
   periodStart DateTime @db.Date
   periodEnd   DateTime @db.Date
 
+  // Denormalised rollup columns — recomputed by recomputeRollups() on every entry change.
   totalHours    Decimal @default(0) @db.Decimal(6, 2)
   regularHours  Decimal @default(0) @db.Decimal(6, 2)
   overtimeHours Decimal @default(0) @db.Decimal(6, 2)
@@ -161,41 +182,58 @@ model Timesheet {
 
   @@unique([userId, sequenceNumber])
   @@unique([userId, periodStart])
-  @@index([userId])
+  // [userId, periodStart] covers single-column userId lookups via index prefix — no
+  // separate @@index([userId]) needed.
   @@index([userId, periodStart])
+  // [userId, status] — "show my MISSING/INCOMPLETE weeks" and PM dashboard queries
+  @@index([userId, status])
 }
 
 model TimesheetEntry {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   timesheetId String
   taskId      String
-  workDate    DateTime  @db.Date
-  hours       Decimal   @db.Decimal(4, 2)
+  workDate    DateTime @db.Date
+  // Per-block hours; Decimal(4,2) supports up to 99.99h — sufficient for a single
+  // work block (max 24h per day in practice).
+  hours       Decimal  @db.Decimal(4, 2)
+
   startTime   DateTime?
   endTime     DateTime?
   isOvertime  Boolean   @default(false)
-  description String? // day-specific note; may differ from Task.description
+  // Day-specific note; intentionally separate from Task.description so the
+  // user can record what they actually did that day.
+  description String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   timesheet Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  // Restrict prevents hard-deleting a task that has logged hours; use Task.isDeleted instead.
   task      Task      @relation(fields: [taskId], references: [id], onDelete: Restrict)
 
+  // Composite covers both "all entries for a timesheet" and "entries on a specific date"
   @@index([timesheetId, workDate])
+  // Needed for FK constraint checks (Restrict) and "all entries for a task" queries
   @@index([taskId])
 }
 
 model ActivityLog {
-  id          BigInt  @id @default(autoincrement())
-  description String?
+  id     BigInt @id @default(autoincrement()) // BigInt for high-volume inserts; no UUID overhead
+  userId String
+  // Free-form type string (e.g. "LOGIN", "TASK_CREATED"). Kept as String rather than
+  // an enum so new event types can be added without schema migrations.
   type        String
-  userId      String
+  description String?
 
+  // No updatedAt — activity logs are immutable; records are never updated after creation.
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   user User @relation("UserActivityLogs", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  // [userId, createdAt] — "recent activity for user" (paginated by time)
+  @@index([userId, createdAt])
+  // [type] — filter or aggregate events by type (admin/PM dashboard)
+  @@index([type])
 }
