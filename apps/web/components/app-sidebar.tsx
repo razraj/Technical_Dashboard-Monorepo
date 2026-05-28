@@ -52,12 +52,12 @@ const data: Data = {
     },
     teams: [
         {
-            name: "Acme Inc",
+            name: "ticktock Inc.",
             logo: GalleryVerticalEnd,
             plan: "Enterprise"
         },
         {
-            name: "Acme Corp.",
+            name: "ticktock Corp.",
             logo: AudioWaveform,
             plan: "Startup"
         },

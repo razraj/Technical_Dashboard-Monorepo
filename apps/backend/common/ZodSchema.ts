@@ -6,6 +6,36 @@ export const loginRequestSchema = z.object({
     password: z.string().min(8)
 });
 
+export const signupRequestSchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(8),
+    username: z.string().min(3),
+    firstName: z.string().min(1).optional(),
+    lastName: z.string().min(1).optional(),
+    profilePic: z.string().url().optional()
+});
+
+export const forgotPasswordRequestSchema = z.object({
+    email: z.string().email()
+});
+
+export const resendVerificationSchema = z.object({
+    email: z.string().email()
+});
+
+export const resetPasswordSchema = z.object({
+    token: z.string().min(1),
+    password: z.string().min(8)
+});
+
+export const contactFormSchema = z.object({
+    name: z.string().min(2, { message: "Please enter your name" }),
+    email: z.string().email({ message: "Please enter a valid email address" }),
+    message: z
+        .string()
+        .min(10, { message: "Please make sure your message is at least 10 characters long." })
+});
+
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
 
 export const createTimesheetSchema = z.object({

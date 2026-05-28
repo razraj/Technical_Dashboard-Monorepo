@@ -8,6 +8,7 @@
         "build": "next build",
         "start": "next start",
         "lint": "eslint --max-warnings 0",
+        "clear": "rm -rf .next .turbo node_modules",
         "check-types": "next typegen && tsc --noEmit"
     },
     "dependencies": {

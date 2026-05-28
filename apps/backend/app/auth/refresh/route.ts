@@ -1,19 +1,21 @@
 import prisma from "@/lib/db";
+import { AUTH_ACCESS_TOKEN_MAX_AGE_SEC } from "@/lib/auth-session";
 import { jwtVerify, SignJWT } from "jose";
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 
 const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET);
 
-const generateToken = (userId: string) => {
+function generateToken(userId: string) {
     return new SignJWT({})
         .setProtectedHeader({ alg: "HS256" })
         .setSubject(userId)
         .setIssuedAt()
-        .setExpirationTime("15m")
+        .setExpirationTime(`${AUTH_ACCESS_TOKEN_MAX_AGE_SEC}s`)
         .sign(SECRET_KEY);
-};
+}
 
-async function verifyToken(token: string) {
+async function verifyRefreshJwt(token: string) {
     try {
         const { payload } = await jwtVerify(token, SECRET_KEY);
         return payload;
@@ -22,21 +24,29 @@ async function verifyToken(token: string) {
     }
 }
 
+function safeEqual(a: string, b: string): boolean {
+    try {
+        const bufA = Buffer.from(a);
+        const bufB = Buffer.from(b);
+        if (bufA.length !== bufB.length) return false;
+        return timingSafeEqual(bufA, bufB);
+    } catch {
+        return false;
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const requestRefreshToken = req.cookies.get("refresh_token")?.value;
         if (!requestRefreshToken) {
-            return NextResponse.json({ message: "Invalid refresh token" }, { status: 401 });
+            return NextResponse.json({ error: "Missing refresh token" }, { status: 401 });
         }
 
-        const payload = await verifyToken(requestRefreshToken);
-        if (!payload) {
-            return NextResponse.json({ message: "Invalid refresh token" }, { status: 401 });
+        const payload = await verifyRefreshJwt(requestRefreshToken);
+        if (!payload?.sub) {
+            return NextResponse.json({ error: "Invalid refresh token" }, { status: 401 });
         }
         const userId = payload.sub;
-        if (!userId) {
-            return NextResponse.json({ message: "Invalid refresh token" }, { status: 401 });
-        }
 
         const user = await prisma.user.findUnique({
             where: { id: userId },
@@ -46,11 +56,12 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        if (!user || !user.refreshTokenExp || user.refreshTokenExp < new Date()) {
-            return NextResponse.json({ message: "Refresh token expired" }, { status: 401 });
+        if (!user?.refreshToken || !user.refreshTokenExp || user.refreshTokenExp < new Date()) {
+            return NextResponse.json({ error: "Refresh token expired" }, { status: 401 });
         }
-        if (user.refreshToken !== requestRefreshToken) {
-            return NextResponse.json({ message: "Invalid refresh token" }, { status: 401 });
+
+        if (!safeEqual(requestRefreshToken, user.refreshToken)) {
+            return NextResponse.json({ error: "Invalid refresh token" }, { status: 401 });
         }
 
         const token = await generateToken(userId);
@@ -60,12 +71,12 @@ export async function POST(req: NextRequest) {
             httpOnly: true,
             sameSite: "strict",
             secure,
-            maxAge: 60 * 15, // 15min
+            maxAge: AUTH_ACCESS_TOKEN_MAX_AGE_SEC,
             path: "/"
         });
         return response;
     } catch (error) {
-        console.log("Error fetching user", error);
-        return NextResponse.json({ message: "Error fetching user" }, { status: 500 });
+        console.error("Refresh error:", error);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
