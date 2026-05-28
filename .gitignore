@@ -46,3 +46,5 @@ docs/postman/Timesheet_APIs.postman_collection.json
 
 **/*.yarnclean
 .yarn/*
+skills-lock.json
+/.agents

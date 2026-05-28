@@ -2,6 +2,11 @@ import { jwtVerify, SignJWT } from "jose";
 
 const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET);
 
+export const backendUrl =
+    process.env.NODE_ENV === "production"
+        ? `https://${process.env.DATABASE_HOST?.replace(/\/$/, "")}`
+        : "http://localhost:3000";
+
 export function isEmail(username: string) {
     // Basic email regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

@@ -1,5 +1,5 @@
 import prisma from "@/lib/db";
-import { Prisma, TimesheetStatus, type Timesheet, type TimesheetEntry } from "@repo/db";
+import { Prisma, TimesheetStatus, Timesheet, TimesheetEntry } from "@repo/db";
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -46,7 +46,7 @@ export function serializeTimesheetEntry(entry: TimesheetEntry) {
     };
 }
 
-export function serializeTimesheet(timesheet: Timesheet & { entries?: TimesheetEntry[] }) {
+export function serializeTimesheet(timesheet: Timesheet & { entries?: TimesheetEntry[] }): Timesheet {
     return {
         id: timesheet.id,
         userId: timesheet.userId,
@@ -54,19 +54,19 @@ export function serializeTimesheet(timesheet: Timesheet & { entries?: TimesheetE
         status: timesheet.status,
         title: timesheet.title,
         notes: timesheet.notes,
-        periodStart: timesheet.periodStart.toISOString().slice(0, 10),
-        periodEnd: timesheet.periodEnd.toISOString().slice(0, 10),
-        totalHours: decimalToNumber(timesheet.totalHours),
-        regularHours: decimalToNumber(timesheet.regularHours),
-        overtimeHours: decimalToNumber(timesheet.overtimeHours),
-        submittedAt: timesheet.submittedAt?.toISOString() ?? null,
-        createdAt: timesheet.createdAt.toISOString(),
-        updatedAt: timesheet.updatedAt.toISOString(),
+        periodStart: parseDateOnly(timesheet.periodStart.toISOString().slice(0, 10)),
+        periodEnd: parseDateOnly(timesheet.periodEnd.toISOString().slice(0, 10)),
+        totalHours: timesheet.totalHours,
+        regularHours: timesheet.regularHours,
+        overtimeHours: timesheet.overtimeHours,
+        submittedAt: new Date(timesheet.submittedAt?.toISOString() ?? ""),
+        createdAt: new Date(timesheet.createdAt?.toISOString() ?? ""),
+        updatedAt: new Date(timesheet.updatedAt?.toISOString() ?? ""),
         ...(timesheet.entries ? { entries: timesheet.entries.map(serializeTimesheetEntry) } : {})
     };
 }
 
-export async function recomputeRollups(timesheetId: string, tx: TransactionClient) {
+export async function recomputeRollups(timesheetId: string, tx: TransactionClient): Promise<Timesheet> {
     const entries = await tx.timesheetEntry.findMany({
         where: { timesheetId },
         select: { hours: true, isOvertime: true }
@@ -113,7 +113,7 @@ export async function createTimesheetForUser(
         periodEnd: Date;
         status?: TimesheetStatus;
     }
-) {
+): Promise<Timesheet> {
     const maxRetries = 2;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -147,7 +147,7 @@ export async function createTimesheetForUser(
     throw new Error("Failed to assign timesheet sequence number.");
 }
 
-export async function getOwnedTimesheet(userId: string, timesheetId: string) {
+export async function getOwnedTimesheet(userId: string, timesheetId: string): Promise<Timesheet | null> {
     return prisma.timesheet.findFirst({
         where: { id: timesheetId, userId }
     });

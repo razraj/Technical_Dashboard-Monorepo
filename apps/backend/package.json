@@ -7,6 +7,7 @@
         "build": "next build",
         "start": "next start",
         "format": "prettier --write \"**/*.{json,js,ts,tsx,md}\"",
+        "clear": "rm -rf .next .turbo node_modules",
         "lint": "eslint . --max-warnings 0"
     },
     "dependencies": {
@@ -14,14 +15,18 @@
         "bcryptjs": "^3.0.3",
         "jose": "^6.1.2",
         "next": "16.2.0",
+        "nodemailer": "^8.0.9",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
+        "resend": "^6.9.4",
         "zod": "^3.25.76"
     },
     "devDependencies": {
         "@repo/eslint-config": "*",
         "@repo/typescript-config": "*",
         "@types/node": "^22.15.3",
+        "@types/nodemailer": "^8.0.0",
+        "dotenv": "^17.2.3",
         "eslint": "^9.39.1",
         "typescript": "5.9.2"
     }

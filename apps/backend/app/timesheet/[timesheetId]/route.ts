@@ -3,7 +3,10 @@ import prisma from "@/lib/db";
 import { getOwnedTimesheet, parseDateOnly, parseOptionalDateTime, serializeTimesheet } from "@/lib/timesheet";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ timesheetId: string }> }) {
+export async function GET(
+    req: NextRequest,
+    { params }: { params: Promise<{ timesheetId: string }> }
+): Promise<NextResponse> {
     try {
         const userId = req.headers.get("x-user-id");
         if (!userId) {
@@ -31,7 +34,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ time
     }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ timesheetId: string }> }) {
+export async function PATCH(
+    req: NextRequest,
+    { params }: { params: Promise<{ timesheetId: string }> }
+): Promise<NextResponse> {
     try {
         const userId = req.headers.get("x-user-id");
         if (!userId) {
@@ -85,7 +91,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ti
     }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ timesheetId: string }> }) {
+export async function DELETE(
+    req: NextRequest,
+    { params }: { params: Promise<{ timesheetId: string }> }
+): Promise<NextResponse> {
     try {
         const userId = req.headers.get("x-user-id");
         if (!userId) {

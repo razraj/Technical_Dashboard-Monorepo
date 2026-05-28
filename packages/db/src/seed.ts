@@ -1,7 +1,7 @@
 /* eslint-disable */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { prisma, type TimesheetStatus } from "./index.js";
+import { prisma, TimesheetStatus } from "./index.js";
 
 const DEFAULT_PASSWORD = process.env.DEFAULT_PASSWORD ?? "password123";
 
@@ -154,7 +154,8 @@ async function main() {
                 username: u.username,
                 firstName: u.firstName,
                 lastName: u.lastName,
-                password: hashedPassword
+                password: hashedPassword,
+                emailVerified: new Date()
             }
         });
         createdUsers.push({ id: user.id, username: u.username, email: u.email, password: u.password });

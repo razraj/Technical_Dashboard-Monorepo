@@ -1,0 +1,463 @@
+{
+    "info": {
+        "_postman_id": "tent-backend-api-collection",
+        "name": "TenT Backend APIs",
+        "description": "Comprehensive API collection for `apps/backend`.\n\nFlow:\n1. Use **Auth > Signup** (optional) to create a user.\n2. Use **Auth > Login** to receive `auth_token` and `refresh_token` cookies.\n3. Call protected routes (`/auth/me`, `/user/*`, `/timesheet*`) with Postman cookie jar enabled.\n\nSeed user example: `alice@example.com` / `password123`.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:3000"
+        },
+        {
+            "key": "userId",
+            "value": ""
+        },
+        {
+            "key": "timesheetId",
+            "value": ""
+        },
+        {
+            "key": "entryId",
+            "value": ""
+        }
+    ],
+    "item": [
+        {
+            "name": "Health",
+            "item": [
+                {
+                    "name": "Backend Root",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/",
+                            "host": ["{{baseUrl}}"],
+                            "path": [""]
+                        },
+                        "description": "Sanity endpoint for backend reachability. Returns a simple JSON message."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Signup",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"new.user@example.com\",\n    \"username\": \"newuser\",\n    \"password\": \"password123\",\n    \"firstName\": \"New\",\n    \"lastName\": \"User\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/signup",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth", "signup"]
+                        },
+                        "description": "Creates a new user account. Enforces unique email and username. Returns the created user profile (without password)."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Login succeeded', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const body = pm.response.json();",
+                                    "if (body && body.user && body.user.id) {",
+                                    "    pm.collectionVariables.set('userId', body.user.id);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"alice@example.com\",\n    \"password\": \"password123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth", "login"]
+                        },
+                        "description": "Authenticates user by email/username + password. Sets `auth_token` and `refresh_token` HTTP-only cookies. Must run before protected routes."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"alice@example.com\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/forgot-password",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth", "forgot-password"]
+                        },
+                        "description": "Generates and stores a password reset token if the email exists. Response is intentionally generic to avoid account enumeration."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Refresh",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/refresh",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth", "refresh"]
+                        },
+                        "description": "Uses `refresh_token` cookie to mint a fresh `auth_token` cookie. Fails if refresh token is expired, missing, or not the latest one stored for user."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Me",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/me",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth", "me"]
+                        },
+                        "description": "Returns current authenticated user profile resolved from `auth_token` via backend proxy."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/logout",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["auth", "logout"]
+                        },
+                        "description": "Clears auth cookies and invalidates stored refresh token for the authenticated user."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "User",
+            "item": [
+                {
+                    "name": "List Users",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/user",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["user"]
+                        },
+                        "description": "Returns all non-deleted users. Useful for admin/testing visibility."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Current User Detail",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/user/{{userId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["user", "{{userId}}"]
+                        },
+                        "description": "Returns full user detail for authenticated user context. `userId` must match token identity."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Current User Profile",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"firstName\": \"Alice\",\n    \"lastName\": \"Johnson\",\n    \"username\": \"alice.j\",\n    \"profilePic\": \"https://example.com/avatar.png\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/user/{{userId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["user", "{{userId}}"]
+                        },
+                        "description": "Updates the authenticated user's profile fields. Route enforces path user ID equals authenticated user ID."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Password",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"oldPassword\": \"password123\",\n    \"password\": \"password1234\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/user/{{userId}}/password",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["user", "{{userId}}", "password"]
+                        },
+                        "description": "Changes current user's password after verifying `oldPassword`."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Timesheets",
+            "item": [
+                {
+                    "name": "List Timesheets",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/timesheet",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["timesheet"]
+                        },
+                        "description": "Lists all timesheets for current authenticated user in descending sequence order."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Timesheet",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    const body = pm.response.json();",
+                                    "    if (body.timesheet && body.timesheet.id) {",
+                                    "        pm.collectionVariables.set('timesheetId', body.timesheet.id);",
+                                    "    }",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Week of 2026-05-26\",\n    \"periodStart\": \"2026-05-26\",\n    \"periodEnd\": \"2026-05-30\",\n    \"status\": \"INCOMPLETE\",\n    \"notes\": \"Created via Postman\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/timesheet",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["timesheet"]
+                        },
+                        "description": "Creates a timesheet for authenticated user. Validates date-only format (`YYYY-MM-DD`) and period bounds."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Timesheet",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["timesheet", "{{timesheetId}}"]
+                        },
+                        "description": "Fetches one owned timesheet including nested entries."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Timesheet",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"status\": \"COMPLETED\",\n    \"submittedAt\": \"2026-05-30T17:00:00.000Z\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["timesheet", "{{timesheetId}}"]
+                        },
+                        "description": "Partially updates owned timesheet fields. At least one field is required."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Timesheet",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["timesheet", "{{timesheetId}}"]
+                        },
+                        "description": "Deletes an owned timesheet."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Entries",
+            "item": [
+                {
+                    "name": "List Entries",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["timesheet", "{{timesheetId}}", "entry"]
+                        },
+                        "description": "Lists entries for one owned timesheet, ordered by work date."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Entry",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    const body = pm.response.json();",
+                                    "    if (body.entry && body.entry.id) {",
+                                    "        pm.collectionVariables.set('entryId', body.entry.id);",
+                                    "    }",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"workDate\": \"2026-05-26\",\n    \"hours\": 8,\n    \"startTime\": \"2026-05-26T09:00:00.000Z\",\n    \"endTime\": \"2026-05-26T17:00:00.000Z\",\n    \"isOvertime\": false,\n    \"description\": \"Regular workday\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["timesheet", "{{timesheetId}}", "entry"]
+                        },
+                        "description": "Adds an entry to one owned timesheet and recomputes rollup hours."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Entry",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"hours\": 9,\n    \"isOvertime\": true,\n    \"description\": \"Extended shift\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry/{{entryId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["timesheet", "{{timesheetId}}", "entry", "{{entryId}}"]
+                        },
+                        "description": "Partially updates an existing entry and recomputes timesheet rollups."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Entry",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry/{{entryId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["timesheet", "{{timesheetId}}", "entry", "{{entryId}}"]
+                        },
+                        "description": "Deletes one entry from an owned timesheet and recomputes rollups."
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ]
+}
