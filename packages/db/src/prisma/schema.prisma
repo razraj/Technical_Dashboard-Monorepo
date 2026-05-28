@@ -160,8 +160,9 @@ model Timesheet {
   entries TimesheetEntry[]
 
   @@unique([userId, sequenceNumber])
+  @@unique([userId, periodStart])
   @@index([userId])
-  @@index([userId, createdAt])
+  @@index([userId, periodStart])
 }
 
 model TimesheetEntry {
