@@ -19,7 +19,7 @@ function getAuthTokenFromCookie(cookieHeader: string | null): string | undefined
 // TODO: Check if "stage-app-cleanly.vercel.app" and "localhost:3001" are allowed to access the backend.
 const allowedHosts = [
     ...(process.env.NODE_ENV === "production"
-        ? ["stage-app-cleanly.vercel.app", "stage-api-cleanly.vercel.app"]
+        ? ["ticktock-app.vercel.app", "ticktock-be.vercel.app"]
         : ["localhost:3000", "localhost:3001"])
 ];
 
