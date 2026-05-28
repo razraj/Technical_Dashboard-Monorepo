@@ -58,6 +58,8 @@
             "description": "Compiles the application for production deployment"
         },
         "generate": {
+            "cache": false,
+            "persistent": true, //long-running processes
             "dependsOn": ["^generate", "^db:generate"],
             "inputs": ["$TURBO_DEFAULT$"]
         },
