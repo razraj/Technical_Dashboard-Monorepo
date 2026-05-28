@@ -4,7 +4,7 @@
         "globalConfiguration": true
     },
     "global": {
-        "ui": "tui",
+        "ui": "tui", //stream
         "inputs": [".env"], //global dependencies
         "passThroughEnv": [
             "DATABASE_HOST",
