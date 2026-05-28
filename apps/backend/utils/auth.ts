@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { jwtVerify, SignJWT } from "jose";
 
 const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET);

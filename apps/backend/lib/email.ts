@@ -1,6 +1,7 @@
 import { emailVerificationHtml } from "@/common/emailer-html/email-verification";
 import { passwordResetHtml } from "@/common/emailer-html/password-reset";
 import { backendUrl } from "@/utils/auth";
+import "dotenv/config";
 import { Resend } from "resend";
 
 function verificationLink(token: string): string {

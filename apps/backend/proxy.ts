@@ -18,7 +18,7 @@ function getAuthTokenFromCookie(cookieHeader: string | null): string | undefined
 
 const allowedHosts = [
     ...(process.env.NODE_ENV === "production"
-        ? ["ticktock-app.vercel.app","ticktock-webapp.vercel.app", "ticktock-be.vercel.app"]
+        ? ["ticktock-webapp.vercel.app", "ticktock-be.vercel.app"]
         : ["localhost:3000", "localhost:3001"])
 ];
 

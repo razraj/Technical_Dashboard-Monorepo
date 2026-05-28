@@ -7,7 +7,6 @@
         "build": "next build",
         "start": "next start",
         "format": "prettier --write \"**/*.{json,js,ts,tsx,md}\"",
-        "clear": "rm -rf .next .turbo node_modules",
         "lint": "eslint . --max-warnings 0"
     },
     "dependencies": {

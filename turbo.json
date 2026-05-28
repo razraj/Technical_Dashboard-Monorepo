@@ -15,14 +15,7 @@
             "SMTP_SERVER_USERNAME",
             "SMTP_SERVER_PASSWORD",
             "SMTP_FROM_EMAIL",
-            "SITE_MAIL_RECIEVER",
-            "GOOGLE_CLIENT_ID",
-            "APPLE_CLIENT_ID",
-            "AWS_REGION",
-            "AWS_ENDPOINT",
-            "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY",
-            "AWS_S3_BUCKET_NAME"
+            "SITE_MAIL_RECIEVER"
         ],
         "env": [
             "DATABASE_HOST",
@@ -34,13 +27,6 @@
             "SMTP_SERVER_PASSWORD",
             "SMTP_FROM_EMAIL",
             "SITE_MAIL_RECIEVER",
-            "GOOGLE_CLIENT_ID",
-            "APPLE_CLIENT_ID",
-            "AWS_REGION",
-            "AWS_ENDPOINT",
-            "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY",
-            "AWS_S3_BUCKET_NAME",
             "NODE_ENV"
         ],
         "envMode": "loose"
@@ -68,25 +54,6 @@
             "inputs": ["$TURBO_DEFAULT$", ".env*"]
         },
         "lint": {
-            "env": [
-                "DATABASE_HOST",
-                "DATABASE_URL",
-                "JWT_SECRET",
-                "DEFAULT_PASSWORD",
-                "SMTP_SERVER_HOST",
-                "SMTP_SERVER_USERNAME",
-                "SMTP_SERVER_PASSWORD",
-                "SMTP_FROM_EMAIL",
-                "SITE_MAIL_RECIEVER",
-                "GOOGLE_CLIENT_ID",
-                "APPLE_CLIENT_ID",
-                "AWS_REGION",
-                "AWS_ENDPOINT",
-                "AWS_ACCESS_KEY_ID",
-                "AWS_SECRET_ACCESS_KEY",
-                "AWS_S3_BUCKET_NAME",
-                "NODE_ENV"
-            ],
             "dependsOn": ["^lint"]
         },
         "check-types": {
@@ -95,25 +62,6 @@
         "dev": {
             "cache": false,
             "persistent": true,
-            "env": [
-                "DATABASE_HOST",
-                "DATABASE_URL",
-                "JWT_SECRET",
-                "DEFAULT_PASSWORD",
-                "SMTP_SERVER_HOST",
-                "SMTP_SERVER_USERNAME",
-                "SMTP_SERVER_PASSWORD",
-                "SMTP_FROM_EMAIL",
-                "SITE_MAIL_RECIEVER",
-                "GOOGLE_CLIENT_ID",
-                "APPLE_CLIENT_ID",
-                "AWS_REGION",
-                "AWS_ENDPOINT",
-                "AWS_ACCESS_KEY_ID",
-                "AWS_SECRET_ACCESS_KEY",
-                "AWS_S3_BUCKET_NAME",
-                "NODE_ENV"
-            ],
             "description": "Runs the application in development mode"
         }
     }

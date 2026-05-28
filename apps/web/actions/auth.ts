@@ -1,9 +1,9 @@
-import { User } from "@/types";
+import { User, UserResponse } from "@/types";
 import { fetchWithoutAuth } from "@/utils/api";
 import { toast } from "@repo/ui/components";
 import { clearUserFromLocalStorage } from "./auth-check";
 
-export async function login(username: string, password: string) {
+export async function login(username: string, password: string): Promise<User> {
     const fetchPromise = fetchWithoutAuth("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -26,7 +26,7 @@ export async function login(username: string, password: string) {
     // Store the user in localStorage
     localStorage.setItem("user", JSON.stringify(data.user));
     window?.location?.replace?.("/dashboard");
-    return data;
+    return data.user;
 }
 
 /**
