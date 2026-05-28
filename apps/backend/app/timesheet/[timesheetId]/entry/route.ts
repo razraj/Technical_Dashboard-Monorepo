@@ -60,6 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tim
             const created = await tx.timesheetEntry.create({
                 data: {
                     timesheetId,
+                    taskId: parsed.data.taskId,
                     workDate: parseDateOnly(parsed.data.workDate),
                     hours: parsed.data.hours,
                     startTime: parseOptionalDateTime(parsed.data.startTime),

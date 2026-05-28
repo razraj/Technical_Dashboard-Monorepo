@@ -10,20 +10,49 @@ datasource db {
   extensions = [pg_trgm]
 }
 
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
 enum TimesheetStatus {
   COMPLETED
   INCOMPLETE
   MISSING
 }
 
+enum UserRole {
+  EMPLOYEE
+  PROJECT_MANAGER
+}
+
+enum TaskType {
+  FIX
+  FEATURE
+  RESEARCH
+  OTHER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+enum ProjectRole {
+  OWNER
+  MEMBER
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
 model User {
-  id                     String    @id @default(uuid()) // This should match RevenueCat's app_user_id
+  id                     String    @id @default(uuid())
   email                  String    @unique
   password               String?
   username               String    @unique
   firstName              String?
   lastName               String?
   profilePic             String?
+  role                   UserRole  @default(EMPLOYEE)
   emailVerified          DateTime?
   emailVerificationToken String?   @unique
   emailVerificationExp   DateTime?
@@ -35,9 +64,76 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  ActivityLog ActivityLog[] @relation("UserActivityLogs")
-  timesheets  Timesheet[]
 
+  activityLogs       ActivityLog[]   @relation("UserActivityLogs")
+  timesheets         Timesheet[]
+  createdProjects    Project[]       @relation("ProjectCreator")
+  projectMemberships ProjectMember[]
+  assignedTasks      Task[]          @relation("TaskAssignee")
+  createdTasks       Task[]          @relation("TaskCreator")
+
+  @@index([isDeleted])
+}
+
+model Project {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  color       String? // hex, e.g. "#3B82F6"
+  createdById String
+  isDeleted   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy User            @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members   ProjectMember[]
+  tasks     Task[]
+
+  @@index([createdById])
+  @@index([isDeleted])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid())
+  projectId String
+  userId    String
+  role      ProjectRole @default(MEMBER)
+  joinedAt  DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+}
+
+model Task {
+  id             String     @id @default(uuid())
+  projectId      String
+  title          String
+  description    String?
+  type           TaskType
+  status         TaskStatus @default(TODO)
+  estimatedHours Decimal?   @db.Decimal(6, 2)
+  assignedToId   String? // defaults to createdById in app logic
+  createdById    String
+  dueDate        DateTime?  @db.Date
+  isDeleted      Boolean    @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedTo User?            @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  User             @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  entries    TimesheetEntry[]
+
+  @@index([projectId])
+  @@index([assignedToId])
+  @@index([createdById])
+  @@index([projectId, status])
   @@index([isDeleted])
 }
 
@@ -71,20 +167,22 @@ model Timesheet {
 model TimesheetEntry {
   id          String    @id @default(uuid())
   timesheetId String
+  taskId      String
   workDate    DateTime  @db.Date
   hours       Decimal   @db.Decimal(4, 2)
   startTime   DateTime?
   endTime     DateTime?
   isOvertime  Boolean   @default(false)
-  description String?
+  description String? // day-specific note; may differ from Task.description
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   timesheet Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Restrict)
 
-  @@index([timesheetId])
   @@index([timesheetId, workDate])
+  @@index([taskId])
 }
 
 model ActivityLog {

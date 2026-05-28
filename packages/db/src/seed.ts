@@ -55,7 +55,7 @@ function isoDate(d: Date): string {
     return d.toISOString().slice(0, 10);
 }
 
-async function seedTimesheetsForUser(userId: string, username: string): Promise<void> {
+async function seedTimesheetsForUser(userId: string, username: string, taskId: string, overtimeTaskId: string): Promise<void> {
     const twoWeeksAgoMonday = mondayOfWeeksAgo(2);
     const twoWeeksAgoFriday = addDays(twoWeeksAgoMonday, 4);
 
@@ -78,6 +78,7 @@ async function seedTimesheetsForUser(userId: string, username: string): Promise<
     await prisma.timesheetEntry.createMany({
         data: [0, 1, 2, 3, 4].map((dayOffset) => ({
             timesheetId: completed.id,
+            taskId,
             workDate: addDays(twoWeeksAgoMonday, dayOffset),
             hours: 8,
             startTime: atUTC(addDays(twoWeeksAgoMonday, dayOffset), 9, 0),
@@ -111,6 +112,7 @@ async function seedTimesheetsForUser(userId: string, username: string): Promise<
         data: [
             {
                 timesheetId: incomplete.id,
+                taskId,
                 workDate: lastWeekMonday,
                 hours: 8,
                 startTime: atUTC(lastWeekMonday, 9, 0),
@@ -120,6 +122,7 @@ async function seedTimesheetsForUser(userId: string, username: string): Promise<
             },
             {
                 timesheetId: incomplete.id,
+                taskId,
                 workDate: lastWeekTuesday,
                 hours: 8,
                 startTime: atUTC(lastWeekTuesday, 9, 0),
@@ -129,6 +132,7 @@ async function seedTimesheetsForUser(userId: string, username: string): Promise<
             },
             {
                 timesheetId: incomplete.id,
+                taskId: overtimeTaskId,
                 workDate: lastWeekTuesday,
                 hours: 1,
                 startTime: atUTC(lastWeekTuesday, 17, 0),
@@ -162,6 +166,9 @@ async function main() {
         console.log(`Created user: ${u.username} (${u.email})`);
     }
 
+    let defaultTaskId: string | null = null;
+    let overtimeTaskId: string | null = null;
+
     if (createdUsers[0]) {
         await prisma.activityLog.createMany({
             data: [
@@ -171,12 +178,49 @@ async function main() {
             ]
         });
         console.log("Created activity logs for", createdUsers[0].username);
+
+        const defaultProject = await prisma.project.create({
+            data: {
+                name: "Internal R&D",
+                description: "Internal Research & Development",
+                color: "#3B82F6",
+                createdById: createdUsers[0].id
+            }
+        });
+        console.log(`Created default project: ${defaultProject.name}`);
+
+        const task1 = await prisma.task.create({
+            data: {
+                projectId: defaultProject.id,
+                title: "Feature Development",
+                description: "Working on core product features",
+                type: "FEATURE",
+                status: "IN_PROGRESS",
+                createdById: createdUsers[0].id
+            }
+        });
+        defaultTaskId = task1.id;
+
+        const task2 = await prisma.task.create({
+            data: {
+                projectId: defaultProject.id,
+                title: "Bug Triage & Fixes",
+                description: "Investigating and resolving bugs",
+                type: "FIX",
+                status: "TODO",
+                createdById: createdUsers[0].id
+            }
+        });
+        overtimeTaskId = task2.id;
+        console.log("Created default tasks");
     }
 
-    for (let i = 0; i < Math.min(2, createdUsers.length); i++) {
-        const user = createdUsers[i];
-        if (!user) continue;
-        await seedTimesheetsForUser(user.id, user.username);
+    if (defaultTaskId && overtimeTaskId) {
+        for (let i = 0; i < Math.min(2, createdUsers.length); i++) {
+            const user = createdUsers[i];
+            if (!user) continue;
+            await seedTimesheetsForUser(user.id, user.username, defaultTaskId, overtimeTaskId);
+        }
     }
 
     console.log("\n############# Login details #############");

@@ -55,6 +55,7 @@ export async function PATCH(
             const updated = await tx.timesheetEntry.update({
                 where: { id: entryId },
                 data: {
+                    ...(parsed.data.taskId !== undefined ? { taskId: parsed.data.taskId } : {}),
                     ...(parsed.data.workDate !== undefined ? { workDate: parseDateOnly(parsed.data.workDate) } : {}),
                     ...(parsed.data.hours !== undefined ? { hours: parsed.data.hours } : {}),
                     ...(startTime !== undefined ? { startTime } : {}),

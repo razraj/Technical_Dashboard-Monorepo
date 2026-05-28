@@ -35,6 +35,7 @@ export function serializeTimesheetEntry(entry: TimesheetEntry) {
     return {
         id: entry.id,
         timesheetId: entry.timesheetId,
+        taskId: entry.taskId,
         workDate: entry.workDate.toISOString().slice(0, 10),
         hours: decimalToNumber(entry.hours),
         startTime: entry.startTime?.toISOString() ?? null,

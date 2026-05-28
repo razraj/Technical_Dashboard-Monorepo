@@ -60,6 +60,7 @@ export const updateTimesheetSchema = z
     });
 
 export const createTimesheetEntrySchema = z.object({
+    taskId: z.string(),
     workDate: isoDateSchema,
     hours: z.number().positive().max(99.99),
     startTime: z.string().datetime().optional(),
@@ -70,6 +71,7 @@ export const createTimesheetEntrySchema = z.object({
 
 export const updateTimesheetEntrySchema = z
     .object({
+        taskId: z.string().optional(),
         workDate: isoDateSchema.optional(),
         hours: z.number().positive().max(99.99).optional(),
         startTime: z.string().datetime().nullable().optional(),
