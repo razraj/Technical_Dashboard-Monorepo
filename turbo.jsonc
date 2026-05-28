@@ -53,12 +53,12 @@
         },
         "build": {
             "dependsOn": ["^build", "^db:generate"], //^ signifies - task must wait for tasks in the package's dependencies to complete first.
+            "persistent": true, //long-running processes
             "inputs": ["$TURBO_DEFAULT$", ".env*"],
             "outputs": [".next/**", "!.next/cache/**"],
             "description": "Compiles the application for production deployment"
         },
         "generate": {
-            "cache": false,
             "persistent": true, //long-running processes
             "dependsOn": ["^generate", "^db:generate"],
             "inputs": ["$TURBO_DEFAULT$"]
