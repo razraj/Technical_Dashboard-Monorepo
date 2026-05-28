@@ -4,8 +4,8 @@
         "globalConfiguration": true
     },
     "global": {
-        "ui": "tui", //stream
-        "inputs": [".env"], //global dependencies
+        "ui": "tui",
+        "inputs": [".env"],
         "passThroughEnv": [
             "DATABASE_HOST",
             "DATABASE_URL",
@@ -43,7 +43,7 @@
             "AWS_S3_BUCKET_NAME",
             "NODE_ENV"
         ],
-        "envMode": "loose" //loose
+        "envMode": "loose"
     },
     "tasks": {
         "clear": {
@@ -52,16 +52,20 @@
             "description": "Cleans the project"
         },
         "build": {
-            "dependsOn": ["^build", "^db:generate"], //^ signifies - task must wait for tasks in the package's dependencies to complete first.
-            "persistent": true, //long-running processes
+            "dependsOn": ["^build", "^db:generate"],
             "inputs": ["$TURBO_DEFAULT$", ".env*"],
             "outputs": [".next/**", "!.next/cache/**"],
             "description": "Compiles the application for production deployment"
         },
         "generate": {
-            "persistent": true, //long-running processes
             "dependsOn": ["^generate", "^db:generate"],
             "inputs": ["$TURBO_DEFAULT$"]
+        },
+        "db:generate": {
+            "cache": false,
+            "env": ["DATABASE_URL"],
+            "dependsOn": ["^db:generate"],
+            "inputs": ["$TURBO_DEFAULT$", ".env*"]
         },
         "lint": {
             "env": [

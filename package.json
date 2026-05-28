@@ -4,8 +4,10 @@
     "version": "1.0.0",
     "scripts": {
         "build": "turbo run build --force",
+        "generate": "turbo run generate",
         "dev": "turbo run dev",
         "dev:backend": "turbo run dev --filter=backend",
+        "db:generate": "turbo run db:generate --filter=@repo/db",
         "clear": "turbo run clear && rm -rf .next .turbo node_modules",
         "env:cp": "cp .env ./apps/backend/.env && cp .env ./apps/web/.env && cp .env ./packages/db/.env",
         "lint": "turbo run lint",

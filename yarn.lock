@@ -2421,7 +2421,6 @@ __metadata:
     eslint-plugin-react-hooks: "npm:^5.2.0"
     eslint-plugin-turbo: "npm:^2.7.1"
     globals: "npm:^16.5.0"
-    turbo: "npm:^2.9.15"
     typescript: "npm:^5.9.2"
     typescript-eslint: "npm:^8.50.0"
   languageName: unknown
