@@ -7,6 +7,46 @@ import {
 } from "@/lib/timesheet";
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * GET /timesheet/weeks
+ *
+ * Paginated list of ISO weeks with derived totals and status. Weeks are computed
+ * in-memory from non-deleted `TimesheetEntry` rows — there is no stored Timesheet
+ * record or persisted status.
+ *
+ * **Auth:** Requires `x-user-id` header (injected by `proxy.ts` after JWT verification).
+ *
+ * **Query params** (validated by `weeksQuerySchema`):
+ * - `page` — 1-based page number (default `1`)
+ * - `pageSize` — items per page, 1–100 (default `10`)
+ * - `userId` — optional; read another user's weeks. Allowed only for MANAGER/ADMIN (403 otherwise)
+ * - `projectId` — optional; filter to one managed project (manager/admin team view only)
+ * - `scope` — `"self"` forces the caller's own timesheet; omit for role default
+ *
+ * **Read scope** (via `resolveTimesheetReadScope`):
+ * - EMPLOYEE → own entries only (`view: "self"`)
+ * - MANAGER/ADMIN → managed projects by default (`view: "manager"`, one row per project × week)
+ * - MANAGER/ADMIN + `scope=self` → own entries
+ *
+ * **Week semantics:** ISO 8601 week (Mon–Sun). `periodStart`/`periodEnd` in each row
+ * are Monday/Friday. `totalHours` sums the full Mon–Sun window. Status vs
+ * `weeklyCapacity` (default 40): `MISSING` (0h), `INCOMPLETE` (< capacity), `COMPLETED` (≥ capacity).
+ * Listing is dense (every week from first entry through today) and sorted newest-first.
+ *
+ * **200 response:**
+ * ```json
+ * {
+ *   "view": "self" | "manager",
+ *   "canViewTeamTimesheets": boolean,
+ *   "weeks": [{ "weekNumber", "weekYear", "periodStart", "periodEnd", "totalHours", "status", "project?" }],
+ *   "page": number,
+ *   "pageSize": number,
+ *   "total": number
+ * }
+ * ```
+ *
+ * **Errors:** 400 invalid query · 401 missing caller · 403/404 scope target · 500 unexpected
+ */
 export async function GET(req: NextRequest) {
     try {
         const callerId = req.headers.get("x-user-id");
