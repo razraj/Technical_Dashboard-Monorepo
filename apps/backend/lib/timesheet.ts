@@ -1,8 +1,9 @@
 import prisma from "@/lib/db";
-import { Prisma, TimesheetStatus, Timesheet, TimesheetEntry } from "@repo/db";
+import { Role, TimesheetEntry } from "@repo/db";
 
-type TransactionClient = Prisma.TransactionClient;
+const MS_PER_DAY = 86_400_000;
 
+/** Parse a `YYYY-MM-DD` string into a UTC-midnight Date. Throws on invalid input. */
 export function parseDateOnly(value: string): Date {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
     if (!match) {
@@ -18,137 +19,108 @@ export function parseDateOnly(value: string): Date {
     return date;
 }
 
-export function parseOptionalDateTime(value: string | undefined): Date | undefined {
-    if (value === undefined) return undefined;
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-        throw new Error("Invalid datetime value.");
+/** UTC `YYYY-MM-DD` string for a Date. */
+export function toIsoDate(date: Date): string {
+    return date.toISOString().slice(0, 10);
+}
+
+/** Add whole days in UTC. */
+export function addUtcDays(date: Date, days: number): Date {
+    return new Date(date.getTime() + days * MS_PER_DAY);
+}
+
+/** Monday (UTC midnight) of the ISO week that contains `date`. */
+export function isoWeekStart(date: Date): Date {
+    const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const dow = d.getUTCDay(); // 0=Sun..6=Sat
+    const sinceMonday = (dow + 6) % 7;
+    return addUtcDays(d, -sinceMonday);
+}
+
+/** ISO 8601 week number (1..53) and week-numbering year. */
+export function isoWeekParts(date: Date): { weekNumber: number; weekYear: number } {
+    const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const dayNum = (d.getUTCDay() + 6) % 7; // Mon=0..Sun=6
+    // Shift to the Thursday of this week; its calendar year is the ISO week-year.
+    d.setUTCDate(d.getUTCDate() - dayNum + 3);
+    const weekYear = d.getUTCFullYear();
+    const firstThursday = new Date(Date.UTC(weekYear, 0, 4));
+    const firstThursdayDayNum = (firstThursday.getUTCDay() + 6) % 7;
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - firstThursdayDayNum + 3);
+    const weekNumber = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * MS_PER_DAY));
+    return { weekNumber, weekYear };
+}
+
+/** Inclusive list of Mondays from `startMonday` to `endMonday`, stepping one week. */
+export function enumerateWeeks(startMonday: Date, endMonday: Date): Date[] {
+    const weeks: Date[] = [];
+    for (let cur = startMonday; cur.getTime() <= endMonday.getTime(); cur = addUtcDays(cur, 7)) {
+        weeks.push(cur);
     }
-    return date;
+    return weeks;
 }
 
-function decimalToNumber(value: Prisma.Decimal): number {
-    return Number(value.toString());
+export type WeekStatus = "MISSING" | "INCOMPLETE" | "COMPLETED";
+
+/** Derive a week's status from its total hours and the user's weekly capacity. */
+export function computeStatus(totalHours: number, capacity: number): WeekStatus {
+    if (totalHours <= 0) return "MISSING";
+    if (totalHours < capacity) return "INCOMPLETE";
+    return "COMPLETED";
 }
 
-export function serializeTimesheetEntry(entry: TimesheetEntry) {
+type EntryWithRefs = TimesheetEntry & {
+    project?: { id: string; name: string } | null;
+    task?: { id: string; title: string } | null;
+};
+
+/** Serialize a TimesheetEntry (with optional included project/task) for API output. */
+export function serializeEntry(entry: EntryWithRefs) {
     return {
         id: entry.id,
-        timesheetId: entry.timesheetId,
-        workDate: entry.workDate.toISOString().slice(0, 10),
-        hours: decimalToNumber(entry.hours),
-        startTime: entry.startTime?.toISOString() ?? null,
-        endTime: entry.endTime?.toISOString() ?? null,
-        isOvertime: entry.isOvertime,
+        date: toIsoDate(entry.date),
+        hours: entry.hours,
+        workType: entry.workType,
         description: entry.description,
+        projectId: entry.projectId,
+        taskId: entry.taskId,
+        project: entry.project ? { id: entry.project.id, name: entry.project.name } : null,
+        task: entry.task ? { id: entry.task.id, title: entry.task.title } : null,
         createdAt: entry.createdAt.toISOString(),
         updatedAt: entry.updatedAt.toISOString()
     };
 }
 
-export function serializeTimesheet(timesheet: Timesheet & { entries?: TimesheetEntry[] }): Timesheet {
-    return {
-        id: timesheet.id,
-        userId: timesheet.userId,
-        sequenceNumber: timesheet.sequenceNumber,
-        status: timesheet.status,
-        title: timesheet.title,
-        notes: timesheet.notes,
-        periodStart: parseDateOnly(timesheet.periodStart.toISOString().slice(0, 10)),
-        periodEnd: parseDateOnly(timesheet.periodEnd.toISOString().slice(0, 10)),
-        totalHours: timesheet.totalHours,
-        regularHours: timesheet.regularHours,
-        overtimeHours: timesheet.overtimeHours,
-        submittedAt: new Date(timesheet.submittedAt?.toISOString() ?? ""),
-        createdAt: new Date(timesheet.createdAt?.toISOString() ?? ""),
-        updatedAt: new Date(timesheet.updatedAt?.toISOString() ?? ""),
-        ...(timesheet.entries ? { entries: timesheet.entries.map(serializeTimesheetEntry) } : {})
-    };
-}
+export type TargetResolution =
+    | { ok: true; userId: string; weeklyCapacity: number }
+    | { ok: false; status: number; message: string };
 
-export async function recomputeRollups(timesheetId: string, tx: TransactionClient): Promise<Timesheet> {
-    const entries = await tx.timesheetEntry.findMany({
-        where: { timesheetId },
-        select: { hours: true, isOvertime: true }
-    });
+/**
+ * Resolve which user's timesheet to read. Defaults to the caller. A different
+ * `requestedUserId` is allowed only for MANAGER/ADMIN callers.
+ */
+export async function resolveTimesheetTarget(
+    callerId: string,
+    requestedUserId?: string
+): Promise<TargetResolution> {
+    const targetId = requestedUserId ?? callerId;
 
-    let totalHours = 0;
-    let overtimeHours = 0;
-
-    for (const entry of entries) {
-        const hours = decimalToNumber(entry.hours);
-        totalHours += hours;
-        if (entry.isOvertime) {
-            overtimeHours += hours;
+    if (targetId !== callerId) {
+        const caller = await prisma.user.findUnique({
+            where: { id: callerId },
+            select: { role: true }
+        });
+        if (!caller) return { ok: false, status: 401, message: "Unauthorized" };
+        if (caller.role !== Role.MANAGER && caller.role !== Role.ADMIN) {
+            return { ok: false, status: 403, message: "Forbidden" };
         }
     }
 
-    const regularHours = totalHours - overtimeHours;
-
-    return tx.timesheet.update({
-        where: { id: timesheetId },
-        data: {
-            totalHours,
-            regularHours,
-            overtimeHours
-        }
+    const target = await prisma.user.findFirst({
+        where: { id: targetId, isDeleted: false },
+        select: { id: true, weeklyCapacity: true }
     });
-}
+    if (!target) return { ok: false, status: 404, message: "User not found" };
 
-async function nextSequenceNumber(userId: string, tx: TransactionClient): Promise<number> {
-    const last = await tx.timesheet.findFirst({
-        where: { userId },
-        orderBy: { sequenceNumber: "desc" },
-        select: { sequenceNumber: true }
-    });
-    return (last?.sequenceNumber ?? 0) + 1;
-}
-
-export async function createTimesheetForUser(
-    userId: string,
-    data: {
-        title: string;
-        notes?: string | null;
-        periodStart: Date;
-        periodEnd: Date;
-        status?: TimesheetStatus;
-    }
-): Promise<Timesheet> {
-    const maxRetries = 2;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-            return await prisma.$transaction(async (tx) => {
-                const sequenceNumber = await nextSequenceNumber(userId, tx);
-                return tx.timesheet.create({
-                    data: {
-                        userId,
-                        sequenceNumber,
-                        title: data.title,
-                        notes: data.notes ?? null,
-                        periodStart: data.periodStart,
-                        periodEnd: data.periodEnd,
-                        status: data.status ?? TimesheetStatus.MISSING
-                    }
-                });
-            });
-        } catch (error) {
-            if (
-                attempt < maxRetries - 1 &&
-                error instanceof Prisma.PrismaClientKnownRequestError &&
-                error.code === "P2002"
-            ) {
-                continue;
-            }
-            throw error;
-        }
-    }
-
-    throw new Error("Failed to assign timesheet sequence number.");
-}
-
-export async function getOwnedTimesheet(userId: string, timesheetId: string): Promise<Timesheet | null> {
-    return prisma.timesheet.findFirst({
-        where: { id: timesheetId, userId }
-    });
+    return { ok: true, userId: target.id, weeklyCapacity: target.weeklyCapacity };
 }
