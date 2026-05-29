@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import "dotenv/config";
 import { SignJWT } from "jose";
 import { NextResponse } from "next/server";
 
