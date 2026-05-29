@@ -76,16 +76,6 @@ const data: Data = {
             isActive: true
         },
         {
-            title: "Models",
-            url: "#",
-            icon: Bot
-        },
-        {
-            title: "Documentation",
-            url: "#",
-            icon: BookOpen
-        },
-        {
             title: "Settings",
             url: "#",
             icon: Settings2,
@@ -94,16 +84,6 @@ const data: Data = {
                     title: "General",
                     url: "#",
                     icon: Settings
-                },
-                {
-                    title: "Team",
-                    url: "#",
-                    icon: UsersIcon
-                },
-                {
-                    title: "Billing",
-                    url: "#",
-                    icon: CreditCard
                 }
             ]
         }

@@ -8,14 +8,13 @@ import { getSanitizedRedirectPath } from "@/utils/url";
 import { GalleryVerticalEnd } from "lucide-react";
 import Link from "next/link";
 
-function LoginPageInner() {
-    const searchParams = useSearchParams();
+function resolveAfterLogin(searchParams: URLSearchParams): string {
     const redirectParam = searchParams.get("redirect");
-    const redirectTo = redirectParam
-        ? getSanitizedRedirectPath(redirectParam)
-        : "/dashboard";
-    const afterLogin = redirectTo === "/" ? "/dashboard" : redirectTo;
+    const redirectTo = redirectParam ? getSanitizedRedirectPath(redirectParam) : "/dashboard";
+    return redirectTo === "/" ? "/dashboard" : redirectTo;
+}
 
+function LoginShell({ afterLogin }: { afterLogin: string }) {
     return (
         <AuthGuard requireUnauthenticated redirectIfAuthenticated={afterLogin}>
             <div className="grid min-h-svh lg:grid-cols-2">
@@ -49,16 +48,15 @@ function LoginPageInner() {
     );
 }
 
+function LoginPageWithRedirect() {
+    const searchParams = useSearchParams();
+    return <LoginShell afterLogin={resolveAfterLogin(searchParams)} />;
+}
+
 export default function Page() {
     return (
-        <Suspense
-            fallback={
-                <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
-                    Loading…
-                </div>
-            }
-        >
-            <LoginPageInner />
+        <Suspense fallback={<LoginShell afterLogin="/dashboard" />}>
+            <LoginPageWithRedirect />
         </Suspense>
     );
 }

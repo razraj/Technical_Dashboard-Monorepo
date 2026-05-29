@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useForm } from "@tanstack/react-form-nextjs"
 import { signup } from "@/actions/auth"
 import { cn } from "@repo/ui/lib/utils"
 import { Button } from "@repo/ui/components/button"
@@ -19,53 +19,51 @@ export function SignupForm({
   ...props
 }: React.ComponentProps<"form">) {
   const router = useRouter()
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [username, setUsername] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirm, setConfirm] = useState("")
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setError(null)
-    if (username.trim().length < 3) {
-      setError("Username must be at least 3 characters")
-      return
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters")
-      return
-    }
-    if (password !== confirm) {
-      setError("Passwords do not match")
-      return
-    }
-    setPending(true)
-    try {
-      const { message } = await signup({
-        email,
-        password,
-        username: username.trim(),
-        firstName: firstName.trim() || undefined,
-        lastName: lastName.trim() || undefined,
-      })
-      toast.success(message ?? "Account created. Check your email to verify.")
-      router.push("/login")
-    } catch (err) {
-      const m = err instanceof Error ? err.message : "Could not create account"
-      setError(m)
-      toast.error(m)
-      setPending(false)
-    }
-  }
+  const form = useForm({
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      username: "",
+      email: "",
+      password: "",
+      confirm: "",
+    },
+    onSubmit: async ({ value }) => {
+      if (value.username.trim().length < 3) {
+        throw new Error("Username must be at least 3 characters")
+      }
+      if (value.password.length < 8) {
+        throw new Error("Password must be at least 8 characters")
+      }
+      if (value.password !== value.confirm) {
+        throw new Error("Passwords do not match")
+      }
+      try {
+        const { message } = await signup({
+          email: value.email,
+          password: value.password,
+          username: value.username.trim(),
+          firstName: value.firstName.trim() || undefined,
+          lastName: value.lastName.trim() || undefined,
+        })
+        toast.success(message ?? "Account created. Check your email to verify.")
+        router.push("/login")
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Could not create account"
+        toast.error(message)
+        throw err
+      }
+    },
+  })
 
   return (
     <form
       className={cn("flex flex-col gap-6", className)}
-      onSubmit={handleSubmit}
+      onSubmit={(event) => {
+        event.preventDefault()
+        void form.handleSubmit()
+      }}
       {...props}
     >
       <FieldGroup>
@@ -77,90 +75,158 @@ export function SignupForm({
         </div>
 
         <div className="flex gap-3">
-          <Field>
-            <FieldLabel htmlFor="firstName">First name</FieldLabel>
-            <Input
-              id="firstName"
-              type="text"
-              placeholder="John"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="lastName">Last name</FieldLabel>
-            <Input
-              id="lastName"
-              type="text"
-              placeholder="Doe"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-            />
-          </Field>
+          <form.Field name="firstName">
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor="firstName">First name</FieldLabel>
+                <Input
+                  id="firstName"
+                  name={field.name}
+                  type="text"
+                  placeholder="John"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                />
+              </Field>
+            )}
+          </form.Field>
+          <form.Field name="lastName">
+            {(field) => (
+              <Field>
+                <FieldLabel htmlFor="lastName">Last name</FieldLabel>
+                <Input
+                  id="lastName"
+                  name={field.name}
+                  type="text"
+                  placeholder="Doe"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                />
+              </Field>
+            )}
+          </form.Field>
         </div>
 
-        <Field>
-          <FieldLabel htmlFor="username">Username</FieldLabel>
-          <Input
-            id="username"
-            type="text"
-            placeholder="johndoe"
-            required
-            minLength={3}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-        </Field>
+        <form.Field
+          name="username"
+          validators={{
+            onChange: ({ value }) =>
+              value.trim().length >= 3 ? undefined : "Username must be at least 3 characters",
+          }}
+        >
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="username">Username</FieldLabel>
+              <Input
+                id="username"
+                name={field.name}
+                type="text"
+                placeholder="johndoe"
+                required
+                minLength={3}
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+              {field.state.meta.errors.length > 0 ? (
+                <p className="text-sm text-destructive">{field.state.meta.errors.join(", ")}</p>
+              ) : null}
+            </Field>
+          )}
+        </form.Field>
 
-        <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input
-            id="email"
-            type="email"
-            placeholder="m@example.com"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </Field>
+        <form.Field name="email">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <Input
+                id="email"
+                name={field.name}
+                type="email"
+                placeholder="m@example.com"
+                required
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+            </Field>
+          )}
+        </form.Field>
 
-        <Field>
-          <FieldLabel htmlFor="password">Password</FieldLabel>
-          <Input
-            id="password"
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </Field>
+        <form.Field
+          name="password"
+          validators={{
+            onChange: ({ value }) =>
+              value.length >= 8 ? undefined : "Password must be at least 8 characters",
+          }}
+        >
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <Input
+                id="password"
+                name={field.name}
+                type="password"
+                required
+                minLength={8}
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+              {field.state.meta.errors.length > 0 ? (
+                <p className="text-sm text-destructive">{field.state.meta.errors.join(", ")}</p>
+              ) : null}
+            </Field>
+          )}
+        </form.Field>
 
-        <Field>
-          <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
-          <Input
-            id="confirmPassword"
-            type="password"
-            required
-            minLength={8}
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-          />
-        </Field>
+        <form.Field
+          name="confirm"
+          validators={{
+            onChangeListenTo: ["password"],
+            onChange: ({ value, fieldApi }) => {
+              const password = fieldApi.form.getFieldValue("password")
+              return value === password ? undefined : "Passwords do not match"
+            },
+          }}
+        >
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
+              <Input
+                id="confirmPassword"
+                name={field.name}
+                type="password"
+                required
+                minLength={8}
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+              {field.state.meta.errors.length > 0 ? (
+                <p className="text-sm text-destructive">{field.state.meta.errors.join(", ")}</p>
+              ) : null}
+            </Field>
+          )}
+        </form.Field>
 
-        {error && (
-          <Field>
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          </Field>
-        )}
+        <form.Subscribe selector={(state) => state.errorMap.onSubmit}>
+          {(submitError) =>
+            submitError ? (
+              <Field>
+                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                  {String(submitError)}
+                </div>
+              </Field>
+            ) : null
+          }
+        </form.Subscribe>
 
-        <Field>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Creating account…" : "Sign up"}
-          </Button>
-        </Field>
+        <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+          {([canSubmit, isSubmitting]) => (
+            <Field>
+              <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                {isSubmitting ? "Creating account…" : "Sign up"}
+              </Button>
+            </Field>
+          )}
+        </form.Subscribe>
 
         <Field>
           <FieldDescription className="text-center">
