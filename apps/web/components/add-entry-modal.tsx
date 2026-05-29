@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useForm } from "@tanstack/react-form-nextjs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@repo/ui/components/dialog"
-import { FieldGroup, Field, FieldLabel, FieldDescription } from "@repo/ui/components/field"
+import { FieldGroup, Field, FieldContent, FieldLabel, FieldDescription } from "@repo/ui/components/field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/components/select"
 import { Textarea } from "@repo/ui/components/textarea"
 import { Button } from "@repo/ui/components/button"
@@ -188,31 +188,33 @@ export function AddEntryModal({ open, onOpenChange, date, weekStart, entry }: Ad
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor="hours">Hours *</FieldLabel>
-                  <div className="flex h-9 w-fit items-center overflow-hidden rounded-md border border-input">
-                    <button
-                      type="button"
-                      onClick={() => field.handleChange(clampHours(field.state.value - 1))}
-                      className="flex aspect-square h-full items-center justify-center border-r hover:bg-muted text-muted-foreground"
-                    >
-                      <MinusIcon className="size-4" />
-                    </button>
-                    <input
-                      type="number"
-                      id="hours"
-                      className="h-full w-12 border-0 bg-transparent text-center text-sm focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      value={field.state.value}
-                      min={1}
-                      max={24}
-                      onChange={(event) => field.handleChange(clampHours(Number(event.target.value)))}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => field.handleChange(clampHours(field.state.value + 1))}
-                      className="flex aspect-square h-full items-center justify-center border-l hover:bg-muted text-muted-foreground"
-                    >
-                      <PlusIcon className="size-4" />
-                    </button>
-                  </div>
+                  <FieldContent className="!w-fit self-start">
+                    <div className="inline-flex h-9 items-stretch overflow-hidden rounded-md border border-input">
+                      <button
+                        type="button"
+                        onClick={() => field.handleChange(clampHours(field.state.value - 1))}
+                        className="flex size-9 shrink-0 items-center justify-center border-r border-input hover:bg-muted text-muted-foreground"
+                      >
+                        <MinusIcon className="size-4" />
+                      </button>
+                      <input
+                        type="number"
+                        id="hours"
+                        className="h-9 w-12 shrink-0 border-0 bg-transparent text-center text-sm focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        value={field.state.value}
+                        min={1}
+                        max={24}
+                        onChange={(event) => field.handleChange(clampHours(Number(event.target.value)))}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => field.handleChange(clampHours(field.state.value + 1))}
+                        className="flex size-9 shrink-0 items-center justify-center border-l border-input hover:bg-muted text-muted-foreground"
+                      >
+                        <PlusIcon className="size-4" />
+                      </button>
+                    </div>
+                  </FieldContent>
                 </Field>
               )}
             </form.Field>
