@@ -1,7 +1,7 @@
 /* eslint-disable */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { prisma, TimesheetStatus, TaskType, TaskStatus, ProjectRole, UserRole } from "./index.js";
+import { prisma, TimesheetStatus, TaskType, TaskStatus, TaskPriority, ProjectRole, ProjectStatus, UserRole } from "./index.js";
 
 const DEFAULT_PASSWORD = process.env.DEFAULT_PASSWORD ?? "password123";
 
@@ -47,8 +47,10 @@ function futureDate(daysFromNow: number): Date {
 // ─── User definitions ─────────────────────────────────────────────────────────
 
 const USERS = [
-    // Project manager — sees everyone's tasks
-    { email: "alice@example.com", username: "alice", firstName: "Alice", lastName: "Chen", role: UserRole.PROJECT_MANAGER },
+    // Admin — full CRUD on everything
+    { email: "admin@example.com", username: "admin", firstName: "Admin", lastName: "User",     role: UserRole.ADMIN },
+    // Project manager — sees everyone's tasks, creates/assigns tasks
+    { email: "alice@example.com", username: "alice", firstName: "Alice", lastName: "Chen",     role: UserRole.PROJECT_MANAGER },
     // Employees
     { email: "bob@example.com",   username: "bob",   firstName: "Bob",   lastName: "Martinez", role: UserRole.EMPLOYEE },
     { email: "carol@example.com", username: "carol", firstName: "Carol", lastName: "Singh",    role: UserRole.EMPLOYEE },
@@ -170,14 +172,14 @@ async function main() {
     const projects: Record<string, { id: string; name: string }> = {};
 
     const projectDefs = [
-        { key: "platform",  name: "TenT Platform",      description: "Core SaaS dashboard product",              color: "#3B82F6", owner: "alice" },
-        { key: "mobile",    name: "Mobile App",          description: "iOS and Android companion app",             color: "#8B5CF6", owner: "alice" },
-        { key: "infra",     name: "Infrastructure",      description: "DevOps, CI/CD, and cloud infrastructure",   color: "#F59E0B", owner: "alice" },
+        { key: "platform",  name: "TenT Platform",      description: "Core SaaS dashboard product",              color: "#3B82F6", owner: "alice", status: ProjectStatus.ACTIVE    },
+        { key: "mobile",    name: "Mobile App",          description: "iOS and Android companion app",             color: "#8B5CF6", owner: "alice", status: ProjectStatus.ACTIVE    },
+        { key: "infra",     name: "Infrastructure",      description: "DevOps, CI/CD, and cloud infrastructure",   color: "#F59E0B", owner: "alice", status: ProjectStatus.ON_HOLD  },
     ];
 
     for (const p of projectDefs) {
         const created = await prisma.project.create({
-            data: { name: p.name, description: p.description, color: p.color, createdById: users[p.owner]!.id },
+            data: { name: p.name, description: p.description, color: p.color, status: p.status, createdById: users[p.owner]!.id },
         });
         projects[p.key] = { id: created.id, name: p.name };
         console.log(`✓ Project: ${p.name}`);
@@ -214,72 +216,72 @@ async function main() {
 
     const taskDefs: {
         key: string; project: string; title: string; description: string;
-        type: TaskType; status: TaskStatus; estimatedHours: number;
-        assignedTo: string; createdBy: string; dueDaysFromNow?: number;
+        type: TaskType; status: TaskStatus; priority: TaskPriority; estimatedHours: number;
+        assignedTo: string; assignedBy?: string; createdBy: string; dueDaysFromNow?: number;
     }[] = [
         // ── TenT Platform ──
         {
             key: "auth_redesign",  project: "platform",
             title: "User authentication redesign",
             description: "Redesign login, signup, and OAuth flows to support SSO providers.",
-            type: TaskType.FEATURE, status: TaskStatus.IN_PROGRESS,
-            estimatedHours: 24, assignedTo: "bob", createdBy: "alice", dueDaysFromNow: 10,
+            type: TaskType.FEATURE, status: TaskStatus.IN_PROGRESS, priority: TaskPriority.HIGH,
+            estimatedHours: 24, assignedTo: "bob", assignedBy: "alice", createdBy: "alice", dueDaysFromNow: 10,
         },
         {
             key: "login_redirect", project: "platform",
             title: "Fix login redirect bug",
             description: "After OAuth login, users land on / instead of the dashboard.",
-            type: TaskType.FIX, status: TaskStatus.DONE,
-            estimatedHours: 3, assignedTo: "carol", createdBy: "alice",
+            type: TaskType.FIX, status: TaskStatus.DONE, priority: TaskPriority.URGENT,
+            estimatedHours: 3, assignedTo: "carol", assignedBy: "alice", createdBy: "alice",
         },
         {
             key: "dashboard_perf", project: "platform",
             title: "Dashboard performance research",
             description: "Investigate why the main dashboard is slow for accounts with >500 tasks.",
-            type: TaskType.RESEARCH, status: TaskStatus.TODO,
-            estimatedHours: 8, assignedTo: "dave", createdBy: "alice", dueDaysFromNow: 14,
+            type: TaskType.RESEARCH, status: TaskStatus.TODO, priority: TaskPriority.MEDIUM,
+            estimatedHours: 8, assignedTo: "dave", assignedBy: "alice", createdBy: "alice", dueDaysFromNow: 14,
         },
         {
             key: "dark_mode",      project: "platform",
             title: "Dark mode support",
             description: "Add a dark theme that respects the user's OS preference.",
-            type: TaskType.FEATURE, status: TaskStatus.TODO,
+            type: TaskType.FEATURE, status: TaskStatus.TODO, priority: TaskPriority.LOW,
             estimatedHours: 16, assignedTo: "bob", createdBy: "bob", dueDaysFromNow: 21,
         },
         {
             key: "csv_crash",      project: "platform",
             title: "Fix CSV export crash",
             description: "Exporting a timesheet with >1000 entries throws a memory error.",
-            type: TaskType.FIX, status: TaskStatus.IN_PROGRESS,
-            estimatedHours: 5, assignedTo: "carol", createdBy: "alice", dueDaysFromNow: 3,
+            type: TaskType.FIX, status: TaskStatus.IN_PROGRESS, priority: TaskPriority.HIGH,
+            estimatedHours: 5, assignedTo: "carol", assignedBy: "alice", createdBy: "alice", dueDaysFromNow: 3,
         },
         // ── Mobile App ──
         {
             key: "push_notif",     project: "mobile",
             title: "iOS push notification integration",
             description: "Integrate APNs for timesheet reminder notifications.",
-            type: TaskType.FEATURE, status: TaskStatus.IN_PROGRESS,
-            estimatedHours: 24, assignedTo: "bob", createdBy: "alice", dueDaysFromNow: 7,
+            type: TaskType.FEATURE, status: TaskStatus.IN_PROGRESS, priority: TaskPriority.HIGH,
+            estimatedHours: 24, assignedTo: "bob", assignedBy: "alice", createdBy: "alice", dueDaysFromNow: 7,
         },
         {
             key: "android_crash",  project: "mobile",
             title: "App crash on Android 14",
             description: "App crashes on launch on Pixel 8 running Android 14.",
-            type: TaskType.FIX, status: TaskStatus.TODO,
-            estimatedHours: 8, assignedTo: "eve", createdBy: "alice", dueDaysFromNow: 2,
+            type: TaskType.FIX, status: TaskStatus.TODO, priority: TaskPriority.URGENT,
+            estimatedHours: 8, assignedTo: "eve", assignedBy: "alice", createdBy: "alice", dueDaysFromNow: 2,
         },
         {
             key: "offline_mode",   project: "mobile",
             title: "Offline mode research",
             description: "Research approaches for offline timesheet entry with conflict resolution.",
-            type: TaskType.RESEARCH, status: TaskStatus.IN_PROGRESS,
-            estimatedHours: 12, assignedTo: "eve", createdBy: "alice", dueDaysFromNow: 5,
+            type: TaskType.RESEARCH, status: TaskStatus.IN_PROGRESS, priority: TaskPriority.MEDIUM,
+            estimatedHours: 12, assignedTo: "eve", assignedBy: "alice", createdBy: "alice", dueDaysFromNow: 5,
         },
         {
             key: "ui_components",  project: "mobile",
             title: "Shared UI component library",
             description: "Build a shared component library for consistent UI across iOS/Android.",
-            type: TaskType.FEATURE, status: TaskStatus.BLOCKED,
+            type: TaskType.FEATURE, status: TaskStatus.BLOCKED, priority: TaskPriority.MEDIUM,
             estimatedHours: 40, assignedTo: "bob", createdBy: "bob",
         },
         // ── Infrastructure ──
@@ -287,33 +289,34 @@ async function main() {
             key: "pg_migration",   project: "infra",
             title: "Migrate to PostgreSQL 16",
             description: "Upgrade from PG 14 to PG 16 to benefit from logical replication improvements.",
-            type: TaskType.RESEARCH, status: TaskStatus.DONE,
-            estimatedHours: 10, assignedTo: "carol", createdBy: "alice",
+            type: TaskType.RESEARCH, status: TaskStatus.DONE, priority: TaskPriority.HIGH,
+            estimatedHours: 10, assignedTo: "carol", assignedBy: "alice", createdBy: "alice",
         },
         {
             key: "staging_env",    project: "infra",
             title: "Set up staging environment",
             description: "Mirror production on a separate Neon branch for pre-release testing.",
-            type: TaskType.OTHER, status: TaskStatus.IN_PROGRESS,
-            estimatedHours: 16, assignedTo: "dave", createdBy: "alice", dueDaysFromNow: 5,
+            type: TaskType.OTHER, status: TaskStatus.IN_PROGRESS, priority: TaskPriority.MEDIUM,
+            estimatedHours: 16, assignedTo: "dave", assignedBy: "alice", createdBy: "alice", dueDaysFromNow: 5,
         },
         {
             key: "ci_pipeline",    project: "infra",
             title: "CI pipeline optimisation",
             description: "Reduce test suite run time from 8 min to under 3 min.",
-            type: TaskType.FIX, status: TaskStatus.TODO,
+            type: TaskType.FIX, status: TaskStatus.TODO, priority: TaskPriority.MEDIUM,
             estimatedHours: 6, assignedTo: "carol", createdBy: "carol", dueDaysFromNow: 12,
         },
         {
             key: "monitoring",     project: "infra",
             title: "Monitoring dashboard",
             description: "Set up Grafana dashboards for API latency, error rates, and DB query times.",
-            type: TaskType.FEATURE, status: TaskStatus.BLOCKED,
-            estimatedHours: 20, assignedTo: "dave", createdBy: "alice",
+            type: TaskType.FEATURE, status: TaskStatus.BLOCKED, priority: TaskPriority.LOW,
+            estimatedHours: 20, assignedTo: "dave", assignedBy: "alice", createdBy: "alice",
         },
     ];
 
     for (const t of taskDefs) {
+        const isDone = t.status === TaskStatus.DONE;
         const created = await prisma.task.create({
             data: {
                 projectId:      projects[t.project]!.id,
@@ -321,10 +324,14 @@ async function main() {
                 description:    t.description,
                 type:           t.type,
                 status:         t.status,
+                priority:       t.priority,
                 estimatedHours: t.estimatedHours,
                 assignedToId:   users[t.assignedTo]!.id,
+                // Only set assignedById when the assigner differs from the creator (manager assignment)
+                assignedById:   t.assignedBy ? users[t.assignedBy]!.id : null,
                 createdById:    users[t.createdBy]!.id,
                 dueDate:        t.dueDaysFromNow != null ? futureDate(t.dueDaysFromNow) : null,
+                completedAt:    isDone ? addDays(startOfDayUTC(new Date()), -7) : null,
             },
         });
         tasks[t.key] = created.id;
@@ -568,8 +575,8 @@ async function main() {
     console.log("  Login credentials (all use same password)");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     for (const u of USERS) {
-        const label = u.role === UserRole.PROJECT_MANAGER ? "PM  " : "EMP ";
-        console.log(`  [${label}] ${u.username.padEnd(8)} | ${u.email.padEnd(22)} | ${DEFAULT_PASSWORD}`);
+        const label = u.role === UserRole.ADMIN ? "ADMIN" : u.role === UserRole.PROJECT_MANAGER ? "PM   " : "EMP  ";
+        console.log(`  [${label}] ${u.username.padEnd(8)} | ${u.email.padEnd(24)} | ${DEFAULT_PASSWORD}`);
     }
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     console.log("Seed complete.");

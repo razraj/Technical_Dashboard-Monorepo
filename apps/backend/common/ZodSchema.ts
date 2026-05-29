@@ -82,3 +82,35 @@ export const updateTimesheetEntrySchema = z
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field is required"
     });
+
+// ─── Timesheet week helpers ───────────────────────────────────────────────────
+
+function isMonday(val: string): boolean {
+    return new Date(val + "T00:00:00Z").getUTCDay() === 1;
+}
+
+function isSunday(val: string): boolean {
+    return new Date(val + "T00:00:00Z").getUTCDay() === 0;
+}
+
+// API-1: GET /timesheet/weeks?weekStart=YYYY-MM-DD&weekEnd=YYYY-MM-DD
+// Both params are optional — defaults to last 8 weeks when omitted.
+export const weeksQuerySchema = z
+    .object({
+        weekStart: isoDateSchema.optional(),
+        weekEnd: isoDateSchema.optional(),
+    })
+    .refine((d) => !d.weekStart || isMonday(d.weekStart), {
+        message: "weekStart must be a Monday (ISO week start)",
+        path: ["weekStart"],
+    })
+    .refine((d) => !d.weekEnd || isSunday(d.weekEnd), {
+        message: "weekEnd must be a Sunday (ISO week end)",
+        path: ["weekEnd"],
+    });
+
+// API-2: path param [weekStart] — must be a Monday in YYYY-MM-DD format
+export const weekStartParamSchema = z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD")
+    .refine(isMonday, { message: "weekStart must be a Monday" });

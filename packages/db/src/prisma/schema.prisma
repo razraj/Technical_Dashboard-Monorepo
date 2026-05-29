@@ -19,8 +19,16 @@ enum TimesheetStatus {
 }
 
 enum UserRole {
+  ADMIN           // full CRUD on everything — checked in route handlers
   EMPLOYEE
   PROJECT_MANAGER
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum TaskType {
@@ -35,6 +43,13 @@ enum TaskStatus {
   IN_PROGRESS
   DONE
   BLOCKED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
 }
 
 enum ProjectRole {
@@ -70,7 +85,8 @@ model User {
   resetToken    String? @unique
   resetTokenExp DateTime?
 
-  isDeleted Boolean @default(false)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime? // populated when isDeleted is set to true; null = active
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -81,18 +97,23 @@ model User {
   projectMemberships ProjectMember[]
   assignedTasks      Task[]          @relation("TaskAssignee")
   createdTasks       Task[]          @relation("TaskCreator")
+  assignedByTasks    Task[]          @relation("TaskAssigner")
 
   // No standalone @@index([isDeleted]) — boolean fields have near-zero cardinality
   // in PostgreSQL and are ignored by the planner without a selective leading column.
 }
 
 model Project {
-  id          String          @id @default(uuid())
-  name        String          @db.VarChar(100)
+  id          String        @id @default(uuid())
+  name        String        @db.VarChar(100)
   description String?
-  color       String?         @db.VarChar(9) // hex: #RGB / #RRGGBB / #RRGGBBAA
+  color       String?       @db.VarChar(9) // hex: #RGB / #RRGGBB / #RRGGBBAA
+  status      ProjectStatus @default(ACTIVE)
+  startDate   DateTime?     @db.Date
+  endDate     DateTime?     @db.Date
   createdById String
-  isDeleted   Boolean         @default(false)
+  isDeleted   Boolean       @default(false)
+  deletedAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -111,6 +132,8 @@ model ProjectMember {
   projectId String
   userId    String
   role      ProjectRole @default(MEMBER)
+  isDeleted Boolean     @default(false)
+  deletedAt DateTime?
   joinedAt  DateTime    @default(now())
   updatedAt DateTime    @updatedAt // tracks role changes (e.g. MEMBER → OWNER)
 
@@ -122,25 +145,42 @@ model ProjectMember {
 }
 
 model Task {
-  id             String     @id @default(uuid())
-  projectId      String
-  title          String     @db.VarChar(255)
-  description    String?
-  type           TaskType
-  status         TaskStatus @default(TODO)
-  estimatedHours Decimal?   @db.Decimal(6, 2)
+  id          String       @id @default(uuid())
+  projectId   String
+  title       String       @db.VarChar(255)
+  description String?
+  type        TaskType
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+
+  // Decimal(6,2) supports up to 9999.99h — sufficient for large epics
+  estimatedHours Decimal? @db.Decimal(6, 2)
+  // Denormalised aggregate of all TimesheetEntry.hours for this task.
+  // Recomputed by recomputeTaskLoggedHours() on every entry change.
+  loggedHours    Decimal  @default(0) @db.Decimal(6, 2)
+
   // Defaults to createdById in app logic; nullable so the field can be cleared
   // if the assigned user is removed from the project.
-  assignedToId   String?
-  createdById    String
-  dueDate        DateTime?  @db.Date
-  isDeleted      Boolean    @default(false)
+  assignedToId String?
+  // Null when employee self-assigns. Populated when a manager/admin explicitly
+  // assigns the task to someone else.
+  assignedById String?
+  createdById  String
+
+  startDate   DateTime? @db.Date // when work on the task should begin
+  dueDate     DateTime? @db.Date
+  // Set to now() by application logic when status transitions to DONE.
+  completedAt DateTime?
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignedTo User?            @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedBy User?            @relation("TaskAssigner", fields: [assignedById], references: [id], onDelete: SetNull)
   createdBy  User             @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
   entries    TimesheetEntry[]
 
@@ -151,6 +191,10 @@ model Task {
   @@index([createdById, status])
   // Composite [projectId, status] — "open tasks in this project" (project detail view)
   @@index([projectId, status])
+  // Drives API-1 week-status query: "tasks assigned to user with dueDate in week range"
+  @@index([assignedToId, dueDate])
+  // Supports "tasks assigned by me" queries (PM / admin dashboards)
+  @@index([assignedById])
 }
 
 model Timesheet {

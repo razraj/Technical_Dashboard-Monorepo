@@ -3,19 +3,6 @@
     "futureFlags": {
         "globalConfiguration": true
     },
-    "globalEnv": [
-        "DATABASE_HOST",
-        "DATABASE_URL",
-        "JWT_SECRET",
-        "DEFAULT_PASSWORD",
-        "SMTP_SERVER_HOST",
-        "SMTP_SERVER_USERNAME",
-        "SMTP_SERVER_PASSWORD",
-        "SMTP_FROM_EMAIL",
-        "SITE_MAIL_RECIEVER",
-        "NODE_ENV",
-        "RESEND_API_KEY"
-    ],
     "global": {
         "ui": "tui",
         "inputs": [".env"],

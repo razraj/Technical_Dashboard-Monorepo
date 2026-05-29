@@ -1,0 +1,323 @@
+{
+  "info": {
+    "name": "TenT — Timesheet APIs",
+    "_postman_id": "tent-timesheet-api",
+    "description": "All timesheet-related API endpoints for the TenT backend (`apps/backend/app/timesheet/`).\n\nAuth: the backend proxy injects `x-user-id` from the JWT session — set the `x-user-id` header directly when calling the backend on port 3000 without the proxy.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "Backend base URL"
+    },
+    {
+      "key": "userId",
+      "value": "clxxxxxxxxxxxxxxxxxxxxxx",
+      "type": "string",
+      "description": "User ID injected by the proxy (set manually when hitting the backend directly)"
+    },
+    {
+      "key": "timesheetId",
+      "value": "clxxxxxxxxxxxxxxxxxxxxxx",
+      "type": "string"
+    },
+    {
+      "key": "entryId",
+      "value": "clxxxxxxxxxxxxxxxxxxxxxx",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Timesheets",
+      "item": [
+        {
+          "name": "List Timesheets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}",
+                "description": "Injected by proxy; set manually when bypassing the proxy"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/timesheet",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet"]
+            },
+            "description": "Returns all timesheets for the authenticated user, ordered by sequenceNumber descending.\n\n**Response 200**\n```json\n{\n  \"timesheets\": [ { ...Timesheet } ],\n  \"total\": 3\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Timesheet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Week of 2026-05-26\",\n  \"notes\": \"Regular work week\",\n  \"periodStart\": \"2026-05-26\",\n  \"periodEnd\": \"2026-06-01\",\n  \"status\": \"INCOMPLETE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/timesheet",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet"]
+            },
+            "description": "Creates a new timesheet for the authenticated user.\n\n**Body fields**\n| Field | Type | Required | Notes |\n|---|---|---|---|\n| title | string | ✅ | min 1 char |\n| periodStart | string | ✅ | YYYY-MM-DD |\n| periodEnd | string | ✅ | YYYY-MM-DD; must be ≥ periodStart |\n| notes | string | ❌ | |\n| status | TimesheetStatus | ❌ | INCOMPLETE \\| COMPLETED \\| MISSING |\n\n**Response 201**\n```json\n{ \"timesheet\": { ...Timesheet } }\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Timesheet by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/timesheet/{{timesheetId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet", "{{timesheetId}}"]
+            },
+            "description": "Returns a single timesheet with its entries ordered by workDate asc.\n\n**Response 200**\n```json\n{ \"timesheet\": { ...Timesheet, entries: [...] } }\n```\n**Response 404** — Timesheet not found"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Timesheet",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated title\",\n  \"notes\": \"Added some notes\",\n  \"status\": \"COMPLETED\",\n  \"submittedAt\": \"2026-05-28T10:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/timesheet/{{timesheetId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet", "{{timesheetId}}"]
+            },
+            "description": "Partially updates a timesheet. At least one field must be provided.\n\n**Body fields** (all optional, but at least one required)\n| Field | Type | Notes |\n|---|---|---|\n| title | string | min 1 char |\n| notes | string \\| null | |\n| periodStart | string | YYYY-MM-DD |\n| periodEnd | string | YYYY-MM-DD; must be ≥ periodStart |\n| status | TimesheetStatus | INCOMPLETE \\| COMPLETED \\| MISSING |\n| submittedAt | string \\| null | ISO datetime or null to clear |\n\n**Response 200**\n```json\n{ \"timesheet\": { ...Timesheet } }\n```\n**Response 404** — Timesheet not found"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Timesheet",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/timesheet/{{timesheetId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet", "{{timesheetId}}"]
+            },
+            "description": "Permanently deletes a timesheet owned by the authenticated user.\n\n**Response 200**\n```json\n{ \"message\": \"Timesheet deleted\" }\n```\n**Response 404** — Timesheet not found"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Week Views",
+      "item": [
+        {
+          "name": "List Weeks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/timesheet/weeks?weekStart=2026-04-27&weekEnd=2026-05-25",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet", "weeks"],
+              "query": [
+                {
+                  "key": "weekStart",
+                  "value": "2026-04-27",
+                  "description": "Optional. Must be a Monday (YYYY-MM-DD). Defaults to Monday 7 weeks ago."
+                },
+                {
+                  "key": "weekEnd",
+                  "value": "2026-05-25",
+                  "description": "Optional. Must be a Sunday (YYYY-MM-DD). Defaults to current Sunday."
+                }
+              ]
+            },
+            "description": "Returns a list of ISO weeks between `weekStart` and `weekEnd` with aggregated stats. Both params are optional — defaults to the past 8 weeks (inclusive of current week).\n\nAlso auto-creates missing Timesheet placeholder rows for every week in the range.\n\n**Query params**\n| Param | Type | Required | Notes |\n|---|---|---|---|\n| weekStart | string | ❌ | YYYY-MM-DD; **must be a Monday** |\n| weekEnd | string | ❌ | YYYY-MM-DD; **must be a Sunday** |\n\n**Response 200**\n```json\n{\n  \"weeks\": [\n    {\n      \"weekStart\": \"2026-05-19\",\n      \"weekEnd\": \"2026-05-25\",\n      \"status\": \"INCOMPLETE\",\n      \"taskCount\": 5,\n      \"completedTaskCount\": 3,\n      \"pendingTaskCount\": 2,\n      \"totalLoggedHours\": 32.5,\n      \"totalRegularHours\": 30,\n      \"totalOvertimeHours\": 2.5,\n      \"timesheetId\": \"clxxxxxxxxxx\"\n    }\n  ]\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Week Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/timesheet/week/2026-05-26",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet", "week", "2026-05-26"]
+            },
+            "description": "Returns a full day-by-day breakdown (Mon → Sun) for the given ISO week.\n\n**Path param**\n| Param | Notes |\n|---|---|\n| weekStart | YYYY-MM-DD; **must be a Monday** |\n\n**Response 200**\n```json\n{\n  \"weekStart\": \"2026-05-26\",\n  \"weekEnd\": \"2026-06-01\",\n  \"status\": \"INCOMPLETE\",\n  \"taskCount\": 4,\n  \"completedTaskCount\": 2,\n  \"pendingTaskCount\": 2,\n  \"totalHours\": 20,\n  \"regularHours\": 18,\n  \"overtimeHours\": 2,\n  \"timesheetId\": \"clxxxxxxxxxx\",\n  \"days\": [\n    {\n      \"date\": \"2026-05-26\",\n      \"dayOfWeek\": \"Monday\",\n      \"totalHours\": 8,\n      \"entries\": [\n        {\n          \"entryId\": \"clxxxxxxxxxx\",\n          \"timesheetId\": \"clxxxxxxxxxx\",\n          \"hours\": 8,\n          \"isOvertime\": false,\n          \"startTime\": \"2026-05-26T09:00:00.000Z\",\n          \"endTime\": \"2026-05-26T17:00:00.000Z\",\n          \"description\": \"Worked on feature X\",\n          \"createdAt\": \"2026-05-26T17:05:00.000Z\",\n          \"updatedAt\": \"2026-05-26T17:05:00.000Z\",\n          \"task\": { \"id\": \"...\", \"title\": \"...\", \"type\": \"...\", \"status\": \"...\", \"priority\": \"...\", \"estimatedHours\": 8, \"loggedHours\": 8, \"startDate\": \"2026-05-26\", \"dueDate\": \"2026-05-26\", \"completedAt\": null },\n          \"project\": { \"id\": \"...\", \"name\": \"...\", \"color\": \"...\", \"status\": \"...\" },\n          \"createdBy\": { \"id\": \"...\", \"firstName\": \"...\", \"lastName\": \"...\", \"profilePic\": null },\n          \"assignedBy\": null\n        }\n      ]\n    }\n  ]\n}\n```"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Timesheet Entries",
+      "item": [
+        {
+          "name": "List Entries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet", "{{timesheetId}}", "entry"]
+            },
+            "description": "Returns all entries for the given timesheet, ordered by workDate then createdAt.\n\n**Response 200**\n```json\n{\n  \"entries\": [ { ...TimesheetEntry } ],\n  \"total\": 5\n}\n```\n**Response 404** — Timesheet not found"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"taskId\": \"clxxxxxxxxxxxxxxxxxxxxxx\",\n  \"workDate\": \"2026-05-26\",\n  \"hours\": 8,\n  \"startTime\": \"2026-05-26T09:00:00.000Z\",\n  \"endTime\": \"2026-05-26T17:00:00.000Z\",\n  \"isOvertime\": false,\n  \"description\": \"Implemented feature X\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet", "{{timesheetId}}", "entry"]
+            },
+            "description": "Creates a new timesheet entry. Also recomputes totalHours / regularHours / overtimeHours rollups on the parent Timesheet.\n\n**Body fields**\n| Field | Type | Required | Notes |\n|---|---|---|---|\n| taskId | string | ✅ | |\n| workDate | string | ✅ | YYYY-MM-DD |\n| hours | number | ✅ | positive, max 99.99 |\n| startTime | string | ❌ | ISO datetime |\n| endTime | string | ❌ | ISO datetime |\n| isOvertime | boolean | ❌ | defaults to false |\n| description | string | ❌ | |\n\n**Response 201**\n```json\n{ \"entry\": { ...TimesheetEntry } }\n```\n**Response 404** — Timesheet not found"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Entry",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hours\": 6,\n  \"isOvertime\": true,\n  \"description\": \"Updated description\",\n  \"startTime\": \"2026-05-26T09:00:00.000Z\",\n  \"endTime\": \"2026-05-26T15:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry/{{entryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet", "{{timesheetId}}", "entry", "{{entryId}}"]
+            },
+            "description": "Partially updates a timesheet entry. At least one field must be provided. Also recomputes rollups on the parent Timesheet.\n\n**Body fields** (all optional, but at least one required)\n| Field | Type | Notes |\n|---|---|---|\n| taskId | string | |\n| workDate | string | YYYY-MM-DD |\n| hours | number | positive, max 99.99 |\n| startTime | string \\| null | ISO datetime or null to clear |\n| endTime | string \\| null | ISO datetime or null to clear |\n| isOvertime | boolean | |\n| description | string \\| null | |\n\n**Response 200**\n```json\n{ \"entry\": { ...TimesheetEntry } }\n```\n**Response 404** — Timesheet not found / Entry not found"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Entry",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{userId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry/{{entryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["timesheet", "{{timesheetId}}", "entry", "{{entryId}}"]
+            },
+            "description": "Deletes a timesheet entry and recomputes rollups on the parent Timesheet.\n\n**Response 200**\n```json\n{ \"message\": \"Entry deleted\" }\n```\n**Response 404** — Timesheet not found / Entry not found"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

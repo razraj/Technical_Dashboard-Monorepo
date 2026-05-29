@@ -1,5 +1,5 @@
 import prisma from "@/lib/db";
-import { Prisma, TimesheetStatus, Timesheet, TimesheetEntry } from "@repo/db";
+import { Prisma, TimesheetStatus, TaskStatus, Timesheet, TimesheetEntry } from "@repo/db";
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -178,6 +178,41 @@ export async function createTimesheetForUser(
     }
 
     throw new Error("Failed to assign timesheet sequence number after retries.");
+}
+
+/**
+ * Derives the TimesheetStatus for a given user+week from task due-dates.
+ *
+ * Rules:
+ *   MISSING     — no non-deleted tasks assigned to user with dueDate in [weekStart, weekEnd]
+ *   COMPLETED   — all such tasks have status DONE
+ *   INCOMPLETE  — at least one such task is not DONE
+ */
+export async function computeWeekStatus(
+    userId: string,
+    weekStart: Date,
+    weekEnd: Date
+): Promise<{ status: TimesheetStatus; taskCount: number; completedTaskCount: number }> {
+    const tasks = await prisma.task.findMany({
+        where: {
+            assignedToId: userId,
+            isDeleted: false,
+            dueDate: { gte: weekStart, lte: weekEnd },
+        },
+        select: { status: true },
+    });
+
+    if (tasks.length === 0) {
+        return { status: TimesheetStatus.MISSING, taskCount: 0, completedTaskCount: 0 };
+    }
+
+    const completedTaskCount = tasks.filter((t) => t.status === TaskStatus.DONE).length;
+    const status =
+        completedTaskCount === tasks.length
+            ? TimesheetStatus.COMPLETED
+            : TimesheetStatus.INCOMPLETE;
+
+    return { status, taskCount: tasks.length, completedTaskCount };
 }
 
 export async function getOwnedTimesheet(userId: string, timesheetId: string): Promise<Timesheet | null> {
