@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
 
         const existing = await prisma.timesheetEntry.findFirst({
             where: { id: entryId, userId: callerId, deletedAt: null },
-            select: { id: true, projectId: true }
+            select: { id: true, projectId: true, taskId: true }
         });
         if (!existing) {
             return NextResponse.json({ message: "Entry not found" }, { status: 404 });
@@ -47,9 +47,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
             }
         }
 
-        if (data.taskId) {
+        const nextTaskId = data.taskId !== undefined ? data.taskId : existing.taskId;
+        const projectChanging = data.projectId !== undefined;
+        const taskChanging = data.taskId !== undefined;
+
+        if (nextTaskId && (projectChanging || taskChanging)) {
             const task = await prisma.task.findFirst({
-                where: { id: data.taskId, deletedAt: null },
+                where: { id: nextTaskId, deletedAt: null },
                 select: { projectId: true }
             });
             if (!task) {
