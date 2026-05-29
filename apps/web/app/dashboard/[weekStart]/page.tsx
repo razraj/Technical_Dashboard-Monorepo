@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -26,16 +26,27 @@ export default function Page({ params }: { params: Promise<{ weekStart: string }
     const { weekStart } = use(params);
     const [detail, setDetail] = useState<WeekDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const requestRef = useRef(0);
 
     const load = useCallback(() => {
+        const token = ++requestRef.current;
         setLoading(true);
+        setError(null);
         getWeekDetail(weekStart)
-            .then((data) => setDetail(data))
-            .catch((error) => {
-                const message = error instanceof Error ? error.message : "Failed to load week";
+            .then((data) => {
+                if (token !== requestRef.current) return;
+                setDetail(data);
+            })
+            .catch((err) => {
+                if (token !== requestRef.current) return;
+                const message = err instanceof Error ? err.message : "Failed to load week";
+                setError(message);
                 toast.error(message);
             })
-            .finally(() => setLoading(false));
+            .finally(() => {
+                if (token === requestRef.current) setLoading(false);
+            });
     }, [weekStart]);
 
     useEffect(() => {
@@ -73,11 +84,18 @@ export default function Page({ params }: { params: Promise<{ weekStart: string }
                                 </Link>
                             </Button>
                         </div>
-                        {loading || !detail ? (
+                        {loading ? (
                             <div className="space-y-4 rounded-xl border bg-card p-6">
                                 <Skeleton className="h-8 w-64" />
                                 <Skeleton className="h-4 w-40" />
                                 <Skeleton className="h-40 w-full" />
+                            </div>
+                        ) : error || !detail ? (
+                            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-card p-10 text-center">
+                                <p className="text-sm text-muted-foreground">{error ?? "Week not found."}</p>
+                                <Button variant="outline" size="sm" onClick={load}>
+                                    Try again
+                                </Button>
                             </div>
                         ) : (
                             <WeeksTimesheet detail={detail} onChanged={load} />
