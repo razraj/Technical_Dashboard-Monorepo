@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { NavUser } from "./nav-user";
+import { getCurrentUserFromLocalStorage } from "@/actions/auth-check";
 
 export interface Data {
     user: {
@@ -110,6 +111,20 @@ const data: Data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const [user, setUser] = React.useState(data.user);
+
+    React.useEffect(() => {
+        getCurrentUserFromLocalStorage().then((u) => {
+            if (!u?.id) return;
+            const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "User";
+            setUser({
+                name,
+                email: u.email ?? "",
+                avatar: u.profilePic ?? ""
+            });
+        });
+    }, []);
+
     return (
         <Sidebar collapsible="icon" {...props}>
             <SidebarHeader>
@@ -119,7 +134,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <NavMain items={data.navMain} />
             </SidebarContent>
             <SidebarFooter>
-                <NavUser user={data.user} />
+                <NavUser user={user} />
             </SidebarFooter>
             <SidebarRail />
         </Sidebar>
