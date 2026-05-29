@@ -1,4 +1,3 @@
-/* eslint-disable */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { prisma, Role } from "./index.js";
