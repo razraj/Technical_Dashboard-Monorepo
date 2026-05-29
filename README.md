@@ -1,125 +1,162 @@
-# Turborepo starter
+# TenT Technical Dashboard
 
-This Turborepo starter is maintained by the Turborepo core team.
+Turborepo monorepo for a timesheet and team dashboard. The **web** app is the user-facing UI; the **backend** app is the API layer and sole database accessor. Shared packages hold the database client, UI components, and tooling configs.
 
-## Using this example
+## Setup instructions
 
-Run the following command:
+### Prerequisites
 
-```sh
-npx create-turbo@latest
-```
+- **Node.js** ≥ 22.13.0
+- **Yarn** 4 (via Corepack: `corepack enable`)
+- **PostgreSQL** (local instance or hosted, e.g. Neon)
 
-## What's inside?
-
-This Turborepo includes the following packages/apps:
-
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo](https://turborepo.dev/docs/getting-started/installation#global-installation)` installed (recommended):
+### 1. Install dependencies
 
 ```sh
-cd my-turborepo
-turbo build
+yarn install
 ```
 
-Without global `turbo`, use your package manager:
+### 2. Configure environment
+
+Create a root `.env` file with at least:
+
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/tent
+JWT_SECRET=your-long-random-secret
+```
+
+Optional but commonly used in development:
+
+```env
+DEFAULT_PASSWORD=password123
+WEB_URL=http://localhost:3001
+```
+
+Copy the root env into each workspace:
 
 ```sh
-cd my-turborepo
-npx turbo build
-yarn dlx turbo build
-yarn exec turbo build
+yarn env:cp
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+This writes `.env` to `apps/backend`, `apps/web`, and `packages/db`.
 
-With [global `turbo](https://turborepo.dev/docs/getting-started/installation#global-installation)` installed:
+### 3. Prepare the database
 
 ```sh
-turbo build --filter=docs
+yarn workspace @repo/db db:generate
+yarn workspace @repo/db db:migrate
+yarn workspace @repo/db db:seed
 ```
 
-Without global `turbo`:
+The seed is idempotent and creates demo users (see [Assumptions & notes](#assumptions--notes)).
+
+### 4. Run locally
+
+Start both apps:
 
 ```sh
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-yarn exec turbo build --filter=docs
+yarn dev
 ```
 
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo](https://turborepo.dev/docs/getting-started/installation#global-installation)` installed (recommended):
+Or run them individually:
 
 ```sh
-cd my-turborepo
-turbo dev
+yarn workspace backend dev   # http://localhost:3000
+yarn workspace web dev       # http://localhost:3001
 ```
 
-Without global `turbo`, use your package manager:
+Open **http://localhost:3001** in the browser. The web app rewrites `/api/*` to the backend on port 3000.
+
+### 5. Verify (optional)
 
 ```sh
-cd my-turborepo
-npx turbo dev
-yarn exec turbo dev
-yarn exec turbo dev
+yarn lint
+yarn check-types
+yarn workspace web test:e2e   # Playwright; requires dev servers or PW_SKIP_WEBSERVER
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+## Repository layout
 
-With [global `turbo](https://turborepo.dev/docs/getting-started/installation#global-installation)` installed:
+| Path | Description |
+|------|-------------|
+| `apps/web` | Next.js frontend (port **3001**) |
+| `apps/backend` | Next.js API + auth gate via `proxy.ts` (port **3000**) |
+| `packages/db` | Prisma schema, migrations, and PostgreSQL client (`@repo/db`) |
+| `packages/ui` | Shared React components (Radix UI + Tailwind) |
+| `packages/eslint-config` | Shared ESLint config |
+| `packages/typescript-config` | Shared TypeScript config |
 
-```sh
-turbo dev --filter=web
-```
+## Frameworks & libraries
 
-Without global `turbo`:
+### Monorepo & tooling
 
-```sh
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-yarn exec turbo dev --filter=web
-```
+- [Turborepo](https://turbo.build/) — task orchestration and caching
+- [Yarn workspaces](https://yarnpkg.com/features/workspaces) (v4)
+- [TypeScript](https://www.typescriptlang.org/) 5.9
+- [ESLint](https://eslint.org/) + [Prettier](https://prettier.io)
 
-### IMPORTANT
+### Apps
 
-```sh
-yarn exec prisma migrate dev --filter=@repo/db
-yarn exec db:seed --filter=@repo/db
+- [Next.js](https://nextjs.org/) 16 (App Router) — both `web` and `backend`
+- [React](https://react.dev/) 19
 
-```
+### Web (`apps/web`)
 
-## Useful Links
+- [TanStack Query](https://tanstack.com/query) — server state / data fetching
+- [TanStack Form](https://tanstack.com/form) — forms
+- [Tailwind CSS](https://tailwindcss.com/) 4
+- [Lucide React](https://lucide.dev/) — icons
+- [next-themes](https://github.com/pacocoursey/next-themes) — theme switching
+- [Playwright](https://playwright.dev/) — end-to-end tests
 
-Learn more about the power of Turborepo:
+### Backend (`apps/backend`)
 
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+- [Prisma](https://www.prisma.io/) 7 + `@prisma/adapter-pg` — PostgreSQL ORM
+- [Zod](https://zod.dev/) — request validation
+- [jose](https://github.com/panva/jose) — JWT sign/verify
+- [bcryptjs](https://github.com/dcodeIO/bcrypt.js) — password hashing
+- [Resend](https://resend.com/) / Nodemailer — transactional email (production vs dev)
 
+### Shared UI (`packages/ui`)
+
+- [Radix UI](https://www.radix-ui.com/) — accessible primitives
+- [class-variance-authority](https://cva.style/) + [tailwind-merge](https://github.com/dcastil/tailwind-merge) — component styling
+- [Sonner](https://sonner.emilkowal.ski/) — toasts
+
+## Assumptions & notes
+
+### Architecture
+
+- **Only the backend talks to the database.** The web app must not import Prisma or `@repo/db` directly.
+- **Browser traffic flows through the web origin:** `Browser → apps/web → /api/* rewrite → apps/backend`. Do not call the backend origin directly from client code; use `fetchWithAuth()` / `fetchWithoutAuth()` from `apps/web/utils/api.ts`.
+- **Auth is JWT-in-cookie, not server-side sessions.** Login sets httpOnly cookies `auth_token` (access) and `refresh_token`. The backend `proxy.ts` verifies the access token and injects `x-user-id` for protected routes. Protected handlers read `x-user-id` from headers — they do not re-parse cookies.
+
+### Environment
+
+- **Source of truth:** root `.env`, copied with `yarn env:cp`.
+- **Required:** `DATABASE_URL`, `JWT_SECRET` (must match across web and backend).
+- **Production:** web and backend deploy as **separate Vercel projects**. Set the web project's backend rewrite target via `DATABASE_HOST` (or equivalent public API origin). Email in production uses `RESEND_API_KEY`.
+- **New env vars:** declare them in `turbo.json` `global.env` if consumed by Turbo tasks.
+
+### Development defaults
+
+- Web: **http://localhost:3001**
+- Backend: **http://localhost:3000**
+- Seed password: `DEFAULT_PASSWORD` env var, or `password123` if unset.
+- Seed users: `dave@example.com` (manager), `eve@example.com` (employee).
+
+### Database
+
+- PostgreSQL is the only supported database. Schema and migrations live in `packages/db`.
+- After schema changes: `yarn workspace @repo/db db:migrate` then `yarn workspace @repo/db db:generate`.
+
+### Testing
+
+- `yarn test` at the repo root is currently a no-op.
+- E2E tests live in `apps/web/e2e/` and run via `yarn workspace web test:e2e`.
+
+### Documentation
+
+- Agent specs and plans: `docs/superpowers/`
+- Contributor constraints and auth flow: `.claude/rules/`
+- Quick command reference for agents: `CLAUDE.md`
