@@ -1,4 +1,3 @@
-import { TimesheetStatus } from "@repo/db";
 import { z } from "zod";
 
 export const loginRequestSchema = z.object({
@@ -38,44 +37,33 @@ export const contactFormSchema = z.object({
 
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
 
-export const createTimesheetSchema = z.object({
-    title: z.string().min(1),
-    notes: z.string().optional(),
-    periodStart: isoDateSchema,
-    periodEnd: isoDateSchema,
-    status: z.nativeEnum(TimesheetStatus).optional()
+export const weeksQuerySchema = z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(10),
+    userId: z.string().min(1).optional()
 });
 
-export const updateTimesheetSchema = z
-    .object({
-        title: z.string().min(1).optional(),
-        notes: z.string().nullable().optional(),
-        periodStart: isoDateSchema.optional(),
-        periodEnd: isoDateSchema.optional(),
-        status: z.nativeEnum(TimesheetStatus).optional(),
-        submittedAt: z.string().datetime().nullable().optional()
-    })
-    .refine((data) => Object.keys(data).length > 0, {
-        message: "At least one field is required"
-    });
-
-export const createTimesheetEntrySchema = z.object({
-    workDate: isoDateSchema,
-    hours: z.number().positive().max(99.99),
-    startTime: z.string().datetime().optional(),
-    endTime: z.string().datetime().optional(),
-    isOvertime: z.boolean().optional(),
-    description: z.string().optional()
+export const weekDetailQuerySchema = z.object({
+    userId: z.string().min(1).optional()
 });
 
-export const updateTimesheetEntrySchema = z
+export const createEntrySchema = z.object({
+    date: isoDateSchema,
+    projectId: z.string().min(1),
+    workType: z.string().min(1),
+    description: z.string().min(1),
+    hours: z.number().positive().max(24),
+    taskId: z.string().min(1).optional()
+});
+
+export const updateEntrySchema = z
     .object({
-        workDate: isoDateSchema.optional(),
-        hours: z.number().positive().max(99.99).optional(),
-        startTime: z.string().datetime().nullable().optional(),
-        endTime: z.string().datetime().nullable().optional(),
-        isOvertime: z.boolean().optional(),
-        description: z.string().nullable().optional()
+        date: isoDateSchema.optional(),
+        projectId: z.string().min(1).optional(),
+        workType: z.string().min(1).optional(),
+        description: z.string().min(1).optional(),
+        hours: z.number().positive().max(24).optional(),
+        taskId: z.string().min(1).nullable().optional()
     })
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field is required"
