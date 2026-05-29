@@ -69,8 +69,8 @@ const data: Data = {
     ],
     navMain: [
         {
-            title: "Playground",
-            url: "#",
+            title: "Timesheets",
+            url: "/dashboard",
             icon: SquareTerminal,
             isActive: true
         },
