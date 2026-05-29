@@ -17,7 +17,14 @@ import { useDeleteEntry } from "@/hooks/use-timesheet-queries"
 import { TimesheetEntry, WeekDetail } from "@/types"
 import { formatWeekRange } from "@/lib/format"
 
+function formatEntryUser(entry: TimesheetEntry): string | null {
+  if (!entry.user) return null
+  const fullName = [entry.user.firstName, entry.user.lastName].filter(Boolean).join(" ")
+  return fullName || entry.user.username
+}
+
 export function WeeksTimesheet({ detail }: { detail: WeekDetail }) {
+  const isManagerView = detail.view === "manager"
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDate, setModalDate] = useState(detail.periodStart)
   const [editEntry, setEditEntry] = useState<TimesheetEntry | null>(null)
@@ -52,7 +59,11 @@ export function WeeksTimesheet({ detail }: { detail: WeekDetail }) {
     <Card className="gap-4 py-5">
       <CardHeader className="flex items-start justify-between gap-4 px-4 sm:px-6">
         <div>
-          <CardTitle className="text-2xl font-semibold tracking-tight">This week&apos;s timesheet</CardTitle>
+          <CardTitle className="text-2xl font-semibold tracking-tight">
+            {isManagerView && detail.project
+              ? `${detail.project.name} — team timesheet`
+              : "This week's timesheet"}
+          </CardTitle>
           <p className="mt-2 text-sm text-muted-foreground">{formatWeekRange(detail.periodStart, detail.periodEnd)}</p>
         </div>
         <div className="min-w-[170px]">
@@ -80,72 +91,85 @@ export function WeeksTimesheet({ detail }: { detail: WeekDetail }) {
             <div className="grid grid-cols-[84px_1fr] gap-3">
               <h3 className="pt-2 text-lg font-semibold leading-none">{day.dayLabel}</h3>
               <div className="space-y-2">
-                {day.entries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2 shadow-xs"
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <p className="truncate text-sm font-medium">{entry.description}</p>
+                {day.entries.map((entry) => {
+                  const userLabel = formatEntryUser(entry)
+
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2 shadow-xs"
+                    >
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <p className="truncate text-sm font-medium">{entry.description}</p>
+                        {userLabel ? (
+                          <p className="truncate text-xs text-muted-foreground">{userLabel}</p>
+                        ) : null}
+                      </div>
+
+                      <span className="text-sm text-muted-foreground">{entry.hours} hrs</span>
+                      {entry.project && !detail.project ? (
+                        <span className="rounded-sm bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">
+                          {entry.project.name}
+                        </span>
+                      ) : null}
+
+                      {!isManagerView ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="size-7"
+                              disabled={deleteEntry.isPending && deleteEntry.variables === entry.id}
+                            >
+                              <MoreHorizontalIcon className="size-4" />
+                              <span className="sr-only">Open row menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEdit(entry)}>
+                              <PencilIcon className="size-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem variant="destructive" onClick={() => handleDelete(entry.id)}>
+                              <Trash2Icon className="size-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
                     </div>
+                  )
+                })}
 
-                    <span className="text-sm text-muted-foreground">{entry.hours} hrs</span>
-                    {entry.project ? (
-                      <span className="rounded-sm bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">
-                        {entry.project.name}
-                      </span>
-                    ) : null}
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="size-7"
-                          disabled={deleteEntry.isPending && deleteEntry.variables === entry.id}
-                        >
-                          <MoreHorizontalIcon className="size-4" />
-                          <span className="sr-only">Open row menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEdit(entry)}>
-                          <PencilIcon className="size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem variant="destructive" onClick={() => handleDelete(entry.id)}>
-                          <Trash2Icon className="size-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))}
-
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-center rounded-lg border border-dashed border-primary/30 text-primary hover:bg-primary/5",
-                    day.entries.length === 0 && "text-muted-foreground border-muted-foreground/20"
-                  )}
-                  onClick={() => openCreate(day.date)}
-                >
-                  <PlusIcon className="size-4" />
-                  Add new task
-                </Button>
+                {!isManagerView ? (
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-center rounded-lg border border-dashed border-primary/30 text-primary hover:bg-primary/5",
+                      day.entries.length === 0 && "text-muted-foreground border-muted-foreground/20"
+                    )}
+                    onClick={() => openCreate(day.date)}
+                  >
+                    <PlusIcon className="size-4" />
+                    Add new task
+                  </Button>
+                ) : null}
               </div>
             </div>
           </section>
         ))}
       </CardContent>
 
-      <AddEntryModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        date={modalDate}
-        weekStart={detail.periodStart}
-        entry={editEntry}
-      />
+      {!isManagerView ? (
+        <AddEntryModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          date={modalDate}
+          weekStart={detail.periodStart}
+          entry={editEntry}
+        />
+      ) : null}
     </Card>
   )
 }

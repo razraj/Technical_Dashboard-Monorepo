@@ -1,6 +1,7 @@
 "use client";
 
 import { checkAuthStatus } from "@/actions/auth-check";
+import { PageSpinner } from "@/components/page-spinner";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -20,11 +21,7 @@ export default function Page() {
     }, [router]);
 
     if (checking) {
-        return (
-            <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
-                Redirecting…
-            </div>
-        );
+        return <PageSpinner className="min-h-svh" label="Redirecting" />;
     }
 
     return null;

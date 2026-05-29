@@ -38,11 +38,15 @@ const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-
 export const weeksQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(10),
-    userId: z.string().min(1).optional()
+    userId: z.string().min(1).optional(),
+    projectId: z.string().min(1).optional(),
+    scope: z.enum(["self", "team"]).optional()
 });
 
 export const weekDetailQuerySchema = z.object({
-    userId: z.string().min(1).optional()
+    userId: z.string().min(1).optional(),
+    projectId: z.string().min(1).optional(),
+    scope: z.enum(["self", "team"]).optional()
 });
 
 export const createEntrySchema = z.object({

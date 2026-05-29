@@ -1,4 +1,4 @@
-import { Project, TimesheetEntry, WeekDetail, WeeksResponse } from "@/types";
+import { Project, TimesheetEntry, TimesheetScope, WeekDetail, WeeksResponse } from "@/types";
 import { fetchWithAuth } from "@/utils/api";
 
 export interface EntryPayload {
@@ -9,11 +9,32 @@ export interface EntryPayload {
     hours: number;
 }
 
-export const getWeeks = (page = 1, pageSize = 10): Promise<WeeksResponse> =>
-    fetchWithAuth(`/timesheet/weeks?page=${page}&pageSize=${pageSize}`, { method: "GET" });
+type TimesheetQueryOptions = {
+    scope?: TimesheetScope;
+    projectId?: string;
+};
 
-export const getWeekDetail = (weekStart: string): Promise<WeekDetail> =>
-    fetchWithAuth(`/timesheet/weeks/${weekStart}`, { method: "GET" });
+function buildTimesheetQuery(options?: TimesheetQueryOptions): string {
+    const params = new URLSearchParams();
+    if (options?.scope) params.set("scope", options.scope);
+    if (options?.projectId) params.set("projectId", options.projectId);
+    const query = params.toString();
+    return query ? `?${query}` : "";
+}
+
+export const getWeeks = (
+    page = 1,
+    pageSize = 10,
+    options?: TimesheetQueryOptions
+): Promise<WeeksResponse> => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (options?.scope) params.set("scope", options.scope);
+    if (options?.projectId) params.set("projectId", options.projectId);
+    return fetchWithAuth(`/timesheet/weeks?${params.toString()}`, { method: "GET" });
+};
+
+export const getWeekDetail = (weekStart: string, options?: TimesheetQueryOptions): Promise<WeekDetail> =>
+    fetchWithAuth(`/timesheet/weeks/${weekStart}${buildTimesheetQuery(options)}`, { method: "GET" });
 
 export const getProjects = (): Promise<{ projects: Project[] }> =>
     fetchWithAuth(`/project`, { method: "GET" });

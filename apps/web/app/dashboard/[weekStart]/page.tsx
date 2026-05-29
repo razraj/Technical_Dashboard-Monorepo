@@ -2,6 +2,7 @@
 
 import { use, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AuthGuard } from "@/components/auth-guard";
@@ -23,7 +24,11 @@ import { toast } from "@repo/ui/components";
 
 export default function Page({ params }: { params: Promise<{ weekStart: string }> }) {
     const { weekStart } = use(params);
-    const { data: detail, isLoading, error, refetch } = useWeekDetail(weekStart);
+    const searchParams = useSearchParams();
+    const projectId = searchParams.get("projectId") ?? undefined;
+    const scopeParam = searchParams.get("scope");
+    const scope = scopeParam === "self" ? "self" : undefined;
+    const { data: detail, isLoading, error, refetch } = useWeekDetail(weekStart, { scope, projectId });
 
     useEffect(() => {
         if (error) {
@@ -31,6 +36,13 @@ export default function Page({ params }: { params: Promise<{ weekStart: string }
             toast.error(message);
         }
     }, [error]);
+
+    const backHref =
+        projectId != null
+            ? `/dashboard?projectId=${projectId}`
+            : scope === "self"
+              ? "/dashboard?scope=self"
+              : "/dashboard";
 
     return (
         <AuthGuard requireUnauthenticated={false}>
@@ -48,7 +60,9 @@ export default function Page({ params }: { params: Promise<{ weekStart: string }
                                     </BreadcrumbItem>
                                     <BreadcrumbSeparator className="hidden md:block" />
                                     <BreadcrumbItem>
-                                        <BreadcrumbPage>{weekStart}</BreadcrumbPage>
+                                        <BreadcrumbPage>
+                                            {detail?.project?.name ? `${detail.project.name} · ${weekStart}` : weekStart}
+                                        </BreadcrumbPage>
                                     </BreadcrumbItem>
                                 </BreadcrumbList>
                             </Breadcrumb>
@@ -57,7 +71,7 @@ export default function Page({ params }: { params: Promise<{ weekStart: string }
                     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                         <div>
                             <Button asChild variant="ghost" size="sm">
-                                <Link href="/dashboard">
+                                <Link href={backHref}>
                                     <ArrowLeftIcon className="size-4" />
                                     Back to timesheets
                                 </Link>

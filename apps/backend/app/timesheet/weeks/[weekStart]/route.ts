@@ -6,7 +6,7 @@ import {
     isoWeekParts,
     isoWeekStart,
     parseDateOnly,
-    resolveTimesheetTarget,
+    resolveTimesheetReadScope,
     serializeEntry,
     toIsoDate
 } from "@/lib/timesheet";
@@ -33,21 +33,46 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ week
         }
 
         const { searchParams } = new URL(req.url);
-        const parsed = weekDetailQuerySchema.safeParse({ userId: searchParams.get("userId") ?? undefined });
+        const parsed = weekDetailQuerySchema.safeParse({
+            userId: searchParams.get("userId") ?? undefined,
+            projectId: searchParams.get("projectId") ?? undefined,
+            scope: searchParams.get("scope") ?? undefined
+        });
         if (!parsed.success) {
             return NextResponse.json({ message: "Invalid query", errors: parsed.error.flatten() }, { status: 400 });
         }
 
-        const target = await resolveTimesheetTarget(callerId, parsed.data.userId);
-        if (!target.ok) {
-            return NextResponse.json({ message: target.message }, { status: target.status });
+        const scopeResult = await resolveTimesheetReadScope(
+            callerId,
+            parsed.data.userId,
+            parsed.data.projectId,
+            parsed.data.scope
+        );
+        if ("ok" in scopeResult) {
+            return NextResponse.json({ message: scopeResult.message }, { status: scopeResult.status });
         }
 
         const sunday = addUtcDays(monday, 6);
+        const includeUser = scopeResult.view === "manager";
+
         const entries = await prisma.timesheetEntry.findMany({
-            where: { userId: target.userId, deletedAt: null, date: { gte: monday, lte: sunday } },
+            where:
+                scopeResult.mode === "user"
+                    ? {
+                          userId: scopeResult.userId,
+                          deletedAt: null,
+                          date: { gte: monday, lte: sunday }
+                      }
+                    : {
+                          projectId: { in: scopeResult.projects.map((project) => project.id) },
+                          deletedAt: null,
+                          date: { gte: monday, lte: sunday }
+                      },
             include: {
-                project: { select: { id: true, name: true } }
+                project: { select: { id: true, name: true } },
+                ...(includeUser
+                    ? { user: { select: { id: true, username: true, firstName: true, lastName: true } } }
+                    : {})
             },
             orderBy: { createdAt: "asc" }
         });
@@ -64,16 +89,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ week
                 date: dayIso,
                 dayLabel,
                 totalHours: dayEntries.reduce((sum, entry) => sum + entry.hours, 0),
-                entries: dayEntries.map(serializeEntry)
+                entries: dayEntries.map((entry) => serializeEntry(entry, { includeUser }))
             };
         });
 
         const { weekNumber, weekYear } = isoWeekParts(monday);
-        const capacity = target.weeklyCapacity;
+        const capacity = scopeResult.weeklyCapacity;
         const utilization = capacity > 0 ? Math.round((totalHours / capacity) * 100) : 0;
+        const project =
+            scopeResult.mode === "managedProjects" && scopeResult.projects.length === 1
+                ? scopeResult.projects[0]
+                : null;
 
         return NextResponse.json(
             {
+                view: scopeResult.view,
+                project,
                 weekNumber,
                 weekYear,
                 periodStart: toIsoDate(monday),

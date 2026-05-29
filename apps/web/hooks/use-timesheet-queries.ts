@@ -11,18 +11,19 @@ import {
     updateEntry,
 } from "@/actions/timesheet";
 import { queryKeys } from "@/lib/query-keys";
+import { TimesheetScope } from "@/types";
 
-export function useWeeks(page: number, pageSize: number) {
+export function useWeeks(page: number, pageSize: number, scope?: TimesheetScope) {
     return useQuery({
-        queryKey: queryKeys.weeks.list(page, pageSize),
-        queryFn: () => getWeeks(page, pageSize),
+        queryKey: queryKeys.weeks.list(page, pageSize, scope),
+        queryFn: () => getWeeks(page, pageSize, scope ? { scope } : undefined),
     });
 }
 
-export function useWeekDetail(weekStart: string) {
+export function useWeekDetail(weekStart: string, options?: { scope?: TimesheetScope; projectId?: string }) {
     return useQuery({
-        queryKey: queryKeys.weeks.detail(weekStart),
-        queryFn: () => getWeekDetail(weekStart),
+        queryKey: queryKeys.weeks.detail(weekStart, options?.scope, options?.projectId),
+        queryFn: () => getWeekDetail(weekStart, options),
     });
 }
 

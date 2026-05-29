@@ -8,7 +8,9 @@
         "build": "next build",
         "start": "next start",
         "lint": "eslint --max-warnings 0",
-        "check-types": "next typegen && tsc --noEmit"
+        "check-types": "next typegen && tsc --noEmit",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui"
     },
     "dependencies": {
         "@repo/ui": "*",
@@ -23,6 +25,7 @@
         "react-dom": "^19.2.0"
     },
     "devDependencies": {
+        "@playwright/test": "^1.51.1",
         "@repo/eslint-config": "*",
         "@repo/typescript-config": "*",
         "@tailwindcss/postcss": "^4.1.17",
