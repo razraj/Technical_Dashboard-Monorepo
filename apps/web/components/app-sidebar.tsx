@@ -73,12 +73,12 @@ const data: Data = {
         },
         {
             title: "Settings",
-            url: "#",
+            url: "/settings",
             icon: Settings2,
             items: [
                 {
-                    title: "General",
-                    url: "#",
+                    title: "Account",
+                    url: "/settings",
                     icon: Settings
                 }
             ]
