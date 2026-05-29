@@ -30,6 +30,15 @@ function addDays(d: Date, days: number): Date {
 async function main() {
     console.log("Seeding database...");
 
+    // Make the seed idempotent: clear existing rows in FK-safe order
+    // (children before parents) so re-running doesn't hit unique constraints.
+    await prisma.timesheetEntry.deleteMany();
+    await prisma.activityLog.deleteMany();
+    await prisma.task.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+    console.log("Cleared existing data.");
+
     const managerPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
     const manager = await prisma.user.create({
         data: {

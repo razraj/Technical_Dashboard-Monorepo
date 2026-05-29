@@ -1,29 +1,36 @@
 "use client";
+
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { AuthGuard } from "@/components/auth-guard";
 import { LoginForm } from "@/components/login-form";
+import { getSanitizedRedirectPath } from "@/utils/url";
 import { GalleryVerticalEnd } from "lucide-react";
+import Link from "next/link";
 
-/**
- * Login page - protected from authenticated users.
- * Uses centralized AuthGuard component for authentication check.
- * Submission, loading, and error handling live in LoginForm.
- */
-export default function Page() {
+function LoginPageInner() {
+    const searchParams = useSearchParams();
+    const redirectParam = searchParams.get("redirect");
+    const redirectTo = redirectParam
+        ? getSanitizedRedirectPath(redirectParam)
+        : "/dashboard";
+    const afterLogin = redirectTo === "/" ? "/dashboard" : redirectTo;
+
     return (
-        <AuthGuard requireUnauthenticated={true}>
+        <AuthGuard requireUnauthenticated redirectIfAuthenticated={afterLogin}>
             <div className="grid min-h-svh lg:grid-cols-2">
                 <div className="flex flex-col gap-4 p-6 md:p-10">
                     <div className="flex justify-center gap-2 md:justify-start">
-                        <a href="#" className="flex items-center gap-2 font-medium">
+                        <Link href="/" className="flex items-center gap-2 font-medium">
                             <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
                                 <GalleryVerticalEnd className="size-4" />
                             </div>
                             ticktock
-                        </a>
+                        </Link>
                     </div>
                     <div className="flex flex-1 items-center justify-center">
                         <div className="w-full max-w-xs">
-                            <LoginForm />
+                            <LoginForm redirectTo={afterLogin} />
                         </div>
                     </div>
                 </div>
@@ -39,5 +46,19 @@ export default function Page() {
                 </div>
             </div>
         </AuthGuard>
+    );
+}
+
+export default function Page() {
+    return (
+        <Suspense
+            fallback={
+                <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
+                    Loading…
+                </div>
+            }
+        >
+            <LoginPageInner />
+        </Suspense>
     );
 }

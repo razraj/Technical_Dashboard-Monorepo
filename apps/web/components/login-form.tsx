@@ -16,8 +16,9 @@ import { toast } from "@repo/ui/components"
 
 export function LoginForm({
   className,
+  redirectTo = "/dashboard",
   ...props
-}: React.ComponentProps<"form">) {
+}: React.ComponentProps<"form"> & { redirectTo?: string }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [pending, setPending] = useState(false)
@@ -28,8 +29,7 @@ export function LoginForm({
     setError(null)
     setPending(true)
     try {
-      // login() redirects on success, so we leave pending=true in that path.
-      await login(email, password)
+      await login(email, password, redirectTo)
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to log in"
       setError(message)

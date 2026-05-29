@@ -1,4 +1,5 @@
 /* global process */
+/* eslint-disable turbo/no-undeclared-env-vars -- Next config reads deployment env at build time */
 const backendUrl =
     process.env.NODE_ENV === "production"
         ? `https://${process.env.DATABASE_HOST?.replace(/\/$/, "")}`

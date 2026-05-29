@@ -1,4 +1,6 @@
+import { clearUserFromLocalStorage } from "@/actions/auth-check";
 import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from "@/utils/errors";
+import { getSanitizedRedirectPath } from "@/utils/url";
 import { toast } from "@repo/ui/components";
 
 const BASE_URL = "/api";
@@ -69,10 +71,13 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
                 // Retry the original request with refreshed cookies
                 return fetchWithAuth(endpoint, options);
             } catch (error) {
-                console.log("🚀 ~ fetchWithAuth ~ error:", error);
-                // Refresh failed, redirect to login
-                const currentUrl = window.location.href;
-                window.location.href = "/login?redirect=" + encodeURIComponent(currentUrl);
+                console.error("Session refresh failed:", error);
+                await clearUserFromLocalStorage();
+                const returnPath = getSanitizedRedirectPath(
+                    window.location.pathname + window.location.search
+                );
+                window.location.href =
+                    "/login?redirect=" + encodeURIComponent(returnPath);
                 toast.error("Session expired. Please log in again.", {
                     position: "top-center"
                 });
