@@ -50,7 +50,12 @@ export function ForgotPasswordForm({
         </Field>
       </FieldGroup>
     </form>
-    <AddEntryModal open={modalOpen} onOpenChange={setModalOpen} />
+    <AddEntryModal
+      open={modalOpen}
+      onOpenChange={setModalOpen}
+      date={new Date().toISOString().slice(0, 10)}
+      onSubmitted={() => setModalOpen(false)}
+    />
     </>
   )
 }
