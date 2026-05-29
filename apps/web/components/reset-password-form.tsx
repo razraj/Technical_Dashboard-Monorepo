@@ -1,5 +1,6 @@
 "use client";
 
+import { useForm } from "@tanstack/react-form-nextjs";
 import { fetchWithoutAuth } from "@/utils/api";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
@@ -14,39 +15,29 @@ export function ResetPasswordForm({ className, ...props }: React.ComponentProps<
     const searchParams = useSearchParams();
     const router = useRouter();
     const token = searchParams.get("token")?.trim() ?? "";
-
-    const [password, setPassword] = useState("");
-    const [confirm, setConfirm] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [done, setDone] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError(null);
-        if (password !== confirm) {
-            setError("Passwords do not match");
-            return;
-        }
-        if (!token) {
-            setError("Missing reset token. Open the link from your email.");
-            return;
-        }
-        setIsLoading(true);
-        try {
+    const form = useForm({
+        defaultValues: {
+            password: "",
+            confirm: "",
+        },
+        onSubmit: async ({ value }) => {
+            if (value.password !== value.confirm) {
+                throw new Error("Passwords do not match");
+            }
+            if (!token) {
+                throw new Error("Missing reset token. Open the link from your email.");
+            }
             await fetchWithoutAuth("/auth/reset-password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token, password })
+                body: JSON.stringify({ token, password: value.password }),
             });
             setDone(true);
             setTimeout(() => router.replace("/login"), 2000);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Could not reset password");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        },
+    });
 
     return (
         <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -71,47 +62,95 @@ export function ResetPasswordForm({ className, ...props }: React.ComponentProps<
                             Your password has been updated. Redirecting to login…
                         </p>
                     ) : (
-                        <form onSubmit={handleSubmit}>
+                        <form
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                void form.handleSubmit();
+                            }}
+                        >
                             <FieldGroup>
-                                <Field>
-                                    <FieldLabel htmlFor="new-password">New password</FieldLabel>
-                                    <Input
-                                        id="new-password"
-                                        type="password"
-                                        autoComplete="new-password"
-                                        required
-                                        minLength={8}
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                    />
-                                </Field>
-                                <Field>
-                                    <FieldLabel htmlFor="confirm-password">Confirm password</FieldLabel>
-                                    <Input
-                                        id="confirm-password"
-                                        type="password"
-                                        autoComplete="new-password"
-                                        required
-                                        minLength={8}
-                                        value={confirm}
-                                        onChange={(e) => setConfirm(e.target.value)}
-                                    />
-                                </Field>
-                                {error && (
-                                    <Field>
-                                        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                                            {error}
-                                        </div>
-                                    </Field>
-                                )}
-                                <Field className="flex flex-col gap-2">
-                                    <Button type="submit" disabled={isLoading}>
-                                        {isLoading ? "Saving…" : "Update password"}
-                                    </Button>
-                                    <Button asChild variant="ghost" type="button" className="w-full">
-                                        <Link href="/login">Back to login</Link>
-                                    </Button>
-                                </Field>
+                                <form.Field
+                                    name="password"
+                                    validators={{
+                                        onChange: ({ value }) =>
+                                            value.length >= 8 ? undefined : "Password must be at least 8 characters",
+                                    }}
+                                >
+                                    {(field) => (
+                                        <Field>
+                                            <FieldLabel htmlFor="new-password">New password</FieldLabel>
+                                            <Input
+                                                id="new-password"
+                                                name={field.name}
+                                                type="password"
+                                                autoComplete="new-password"
+                                                required
+                                                minLength={8}
+                                                value={field.state.value}
+                                                onChange={(e) => field.handleChange(e.target.value)}
+                                            />
+                                            {field.state.meta.errors.length > 0 ? (
+                                                <p className="text-sm text-destructive">
+                                                    {field.state.meta.errors.join(", ")}
+                                                </p>
+                                            ) : null}
+                                        </Field>
+                                    )}
+                                </form.Field>
+                                <form.Field
+                                    name="confirm"
+                                    validators={{
+                                        onChangeListenTo: ["password"],
+                                        onChange: ({ value, fieldApi }) => {
+                                            const password = fieldApi.form.getFieldValue("password");
+                                            return value === password ? undefined : "Passwords do not match";
+                                        },
+                                    }}
+                                >
+                                    {(field) => (
+                                        <Field>
+                                            <FieldLabel htmlFor="confirm-password">Confirm password</FieldLabel>
+                                            <Input
+                                                id="confirm-password"
+                                                name={field.name}
+                                                type="password"
+                                                autoComplete="new-password"
+                                                required
+                                                minLength={8}
+                                                value={field.state.value}
+                                                onChange={(e) => field.handleChange(e.target.value)}
+                                            />
+                                            {field.state.meta.errors.length > 0 ? (
+                                                <p className="text-sm text-destructive">
+                                                    {field.state.meta.errors.join(", ")}
+                                                </p>
+                                            ) : null}
+                                        </Field>
+                                    )}
+                                </form.Field>
+                                <form.Subscribe selector={(state) => state.errorMap.onSubmit}>
+                                    {(submitError) =>
+                                        submitError ? (
+                                            <Field>
+                                                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                                                    {String(submitError)}
+                                                </div>
+                                            </Field>
+                                        ) : null
+                                    }
+                                </form.Subscribe>
+                                <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                                    {([canSubmit, isSubmitting]) => (
+                                        <Field className="flex flex-col gap-2">
+                                            <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                                                {isSubmitting ? "Saving…" : "Update password"}
+                                            </Button>
+                                            <Button asChild variant="ghost" type="button" className="w-full">
+                                                <Link href="/login">Back to login</Link>
+                                            </Button>
+                                        </Field>
+                                    )}
+                                </form.Subscribe>
                             </FieldGroup>
                         </form>
                     )}

@@ -13,15 +13,15 @@ import {
 import { cn } from "@repo/ui/lib/utils"
 import { toast } from "@repo/ui/components"
 import { AddEntryModal } from "@/components/add-entry-modal"
-import { deleteEntry } from "@/actions/timesheet"
+import { useDeleteEntry } from "@/hooks/use-timesheet-queries"
 import { TimesheetEntry, WeekDetail } from "@/types"
 import { formatWeekRange } from "@/lib/format"
 
-export function WeeksTimesheet({ detail, onChanged }: { detail: WeekDetail; onChanged: () => void }) {
+export function WeeksTimesheet({ detail }: { detail: WeekDetail }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDate, setModalDate] = useState(detail.periodStart)
   const [editEntry, setEditEntry] = useState<TimesheetEntry | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const deleteEntry = useDeleteEntry(detail.periodStart)
 
   const completionPct = Math.min(100, detail.utilization)
 
@@ -38,17 +38,13 @@ export function WeeksTimesheet({ detail, onChanged }: { detail: WeekDetail; onCh
   }
 
   const handleDelete = async (entryId: string) => {
-    if (deletingId) return
-    setDeletingId(entryId)
+    if (deleteEntry.isPending) return
     try {
-      await deleteEntry(entryId)
+      await deleteEntry.mutateAsync(entryId)
       toast.success("Entry deleted")
-      onChanged()
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete entry"
       toast.error(message)
-    } finally {
-      setDeletingId(null)
     }
   }
 
@@ -102,7 +98,12 @@ export function WeeksTimesheet({ detail, onChanged }: { detail: WeekDetail; onCh
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon-sm" className="size-7" disabled={deletingId === entry.id}>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="size-7"
+                          disabled={deleteEntry.isPending && deleteEntry.variables === entry.id}
+                        >
                           <MoreHorizontalIcon className="size-4" />
                           <span className="sr-only">Open row menu</span>
                         </Button>
@@ -142,8 +143,8 @@ export function WeeksTimesheet({ detail, onChanged }: { detail: WeekDetail; onCh
         open={modalOpen}
         onOpenChange={setModalOpen}
         date={modalDate}
+        weekStart={detail.periodStart}
         entry={editEntry}
-        onSubmitted={onChanged}
       />
     </Card>
   )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react"
+import { useForm } from "@tanstack/react-form-nextjs"
 import { forgotPassword } from "@/actions/auth"
 import { cn } from "@repo/ui/lib/utils"
 import { Button } from "@repo/ui/components/button"
@@ -17,31 +18,28 @@ export function ForgotPasswordForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
-  const [email, setEmail] = useState("")
-  const [pending, setPending] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [message, setMessage] = useState("")
-  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setError(null)
-    setPending(true)
-    try {
-      const res = await forgotPassword(email)
-      setMessage(
-        res.message ??
-          "If an account exists for that email, you'll receive password reset instructions shortly."
-      )
-      setSubmitted(true)
-    } catch (err) {
-      const m = err instanceof Error ? err.message : "Something went wrong"
-      setError(m)
-      toast.error(m)
-    } finally {
-      setPending(false)
-    }
-  }
+  const form = useForm({
+    defaultValues: {
+      email: "",
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        const res = await forgotPassword(value.email)
+        setMessage(
+          res.message ??
+            "If an account exists for that email, you'll receive password reset instructions shortly."
+        )
+        setSubmitted(true)
+      } catch (err) {
+        const m = err instanceof Error ? err.message : "Something went wrong"
+        toast.error(m)
+        throw err
+      }
+    },
+  })
 
   if (submitted) {
     return (
@@ -63,7 +61,10 @@ export function ForgotPasswordForm({
   return (
     <form
       className={cn("flex flex-col gap-6", className)}
-      onSubmit={handleSubmit}
+      onSubmit={(event) => {
+        event.preventDefault()
+        void form.handleSubmit()
+      }}
       {...props}
     >
       <FieldGroup>
@@ -73,29 +74,42 @@ export function ForgotPasswordForm({
             Enter your email to receive a password reset link
           </p>
         </div>
-        <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input
-            id="email"
-            type="email"
-            placeholder="m@example.com"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </Field>
-        {error && (
-          <Field>
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          </Field>
-        )}
-        <Field>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Sending…" : "Send reset link"}
-          </Button>
-        </Field>
+        <form.Field name="email">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <Input
+                id="email"
+                name={field.name}
+                type="email"
+                placeholder="m@example.com"
+                required
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+            </Field>
+          )}
+        </form.Field>
+        <form.Subscribe selector={(state) => state.errorMap.onSubmit}>
+          {(submitError) =>
+            submitError ? (
+              <Field>
+                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                  {String(submitError)}
+                </div>
+              </Field>
+            ) : null
+          }
+        </form.Subscribe>
+        <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+          {([canSubmit, isSubmitting]) => (
+            <Field>
+              <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                {isSubmitting ? "Sending…" : "Send reset link"}
+              </Button>
+            </Field>
+          )}
+        </form.Subscribe>
         <Field>
           <FieldDescription className="text-center">
             Remember your password?{" "}

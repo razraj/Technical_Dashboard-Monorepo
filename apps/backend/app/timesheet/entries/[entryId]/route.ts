@@ -19,14 +19,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
 
         const existing = await prisma.timesheetEntry.findFirst({
             where: { id: entryId, userId: callerId, deletedAt: null },
-            select: { id: true, projectId: true, taskId: true }
+            select: { id: true }
         });
         if (!existing) {
             return NextResponse.json({ message: "Entry not found" }, { status: 404 });
         }
 
         const data = parsed.data;
-        const nextProjectId = data.projectId ?? existing.projectId;
 
         let parsedDate: Date | undefined;
         if (data.date !== undefined) {
@@ -47,23 +46,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
             }
         }
 
-        const nextTaskId = data.taskId !== undefined ? data.taskId : existing.taskId;
-        const projectChanging = data.projectId !== undefined;
-        const taskChanging = data.taskId !== undefined;
-
-        if (nextTaskId && (projectChanging || taskChanging)) {
-            const task = await prisma.task.findFirst({
-                where: { id: nextTaskId, deletedAt: null },
-                select: { projectId: true }
-            });
-            if (!task) {
-                return NextResponse.json({ message: "Task not found" }, { status: 400 });
-            }
-            if (task.projectId !== nextProjectId) {
-                return NextResponse.json({ message: "Task does not belong to project" }, { status: 400 });
-            }
-        }
-
         const updated = await prisma.timesheetEntry.update({
             where: { id: entryId },
             data: {
@@ -71,12 +53,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
                 ...(data.projectId !== undefined ? { projectId: data.projectId } : {}),
                 ...(data.workType !== undefined ? { workType: data.workType } : {}),
                 ...(data.description !== undefined ? { description: data.description } : {}),
-                ...(data.hours !== undefined ? { hours: data.hours } : {}),
-                ...(data.taskId !== undefined ? { taskId: data.taskId } : {})
+                ...(data.hours !== undefined ? { hours: data.hours } : {})
             },
             include: {
-                project: { select: { id: true, name: true } },
-                task: { select: { id: true, title: true } }
+                project: { select: { id: true, name: true } }
             }
         });
 

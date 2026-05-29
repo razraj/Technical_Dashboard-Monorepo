@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "Invalid body", errors: parsed.error.flatten() }, { status: 400 });
         }
 
-        const { date, projectId, workType, description, hours, taskId } = parsed.data;
+        const { date, projectId, workType, description, hours } = parsed.data;
 
         let entryDate: Date;
         try {
@@ -33,19 +33,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "Project not found" }, { status: 400 });
         }
 
-        if (taskId) {
-            const task = await prisma.task.findFirst({
-                where: { id: taskId, deletedAt: null },
-                select: { projectId: true }
-            });
-            if (!task) {
-                return NextResponse.json({ message: "Task not found" }, { status: 400 });
-            }
-            if (task.projectId !== projectId) {
-                return NextResponse.json({ message: "Task does not belong to project" }, { status: 400 });
-            }
-        }
-
         const created = await prisma.timesheetEntry.create({
             data: {
                 userId: callerId,
@@ -53,12 +40,10 @@ export async function POST(req: NextRequest) {
                 hours,
                 workType,
                 description,
-                projectId,
-                taskId: taskId ?? null
+                projectId
             },
             include: {
-                project: { select: { id: true, name: true } },
-                task: { select: { id: true, title: true } }
+                project: { select: { id: true, name: true } }
             }
         });
 

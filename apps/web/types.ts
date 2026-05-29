@@ -45,9 +45,7 @@ export interface TimesheetEntry {
     workType: string;
     description: string;
     projectId: string;
-    taskId: string | null;
     project: { id: string; name: string } | null;
-    task: { id: string; title: string } | null;
     createdAt: string;
     updatedAt: string;
 }

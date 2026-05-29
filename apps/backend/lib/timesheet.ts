@@ -71,10 +71,9 @@ export function computeStatus(totalHours: number, capacity: number): WeekStatus 
 
 type EntryWithRefs = TimesheetEntry & {
     project?: { id: string; name: string } | null;
-    task?: { id: string; title: string } | null;
 };
 
-/** Serialize a TimesheetEntry (with optional included project/task) for API output. */
+/** Serialize a TimesheetEntry (with optional included project) for API output. */
 export function serializeEntry(entry: EntryWithRefs) {
     return {
         id: entry.id,
@@ -83,9 +82,7 @@ export function serializeEntry(entry: EntryWithRefs) {
         workType: entry.workType,
         description: entry.description,
         projectId: entry.projectId,
-        taskId: entry.taskId,
         project: entry.project ? { id: entry.project.id, name: entry.project.name } : null,
-        task: entry.task ? { id: entry.task.id, title: entry.task.title } : null,
         createdAt: entry.createdAt.toISOString(),
         updatedAt: entry.updatedAt.toISOString()
     };

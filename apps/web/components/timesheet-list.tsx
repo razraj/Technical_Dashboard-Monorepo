@@ -7,9 +7,9 @@ import { Skeleton } from "@repo/ui/components/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/components/select"
 import { cn } from "@repo/ui/lib/utils"
 import { toast } from "@repo/ui/components"
-import { getWeeks } from "@/actions/timesheet"
+import { useWeeks } from "@/hooks/use-timesheet-queries"
 import { formatWeekRange } from "@/lib/format"
-import { WeekStatus, WeekSummary } from "@/types"
+import { WeekStatus } from "@/types"
 
 const PAGE_SIZES = [5, 10, 20]
 
@@ -26,33 +26,19 @@ const ACTION_LABELS: Record<WeekStatus, string> = {
 }
 
 export function TimesheetList() {
-  const [weeks, setWeeks] = useState<WeekSummary[]>([])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading, error } = useWeeks(page, pageSize)
 
   useEffect(() => {
-    let active = true
-    setLoading(true)
-    getWeeks(page, pageSize)
-      .then((res) => {
-        if (!active) return
-        setWeeks(res.weeks)
-        setTotal(res.total)
-      })
-      .catch((error) => {
-        const message = error instanceof Error ? error.message : "Failed to load timesheets"
-        toast.error(message)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
+    if (error) {
+      const message = error instanceof Error ? error.message : "Failed to load timesheets"
+      toast.error(message)
     }
-  }, [page, pageSize])
+  }, [error])
 
+  const weeks = data?.weeks ?? []
+  const total = data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return (
@@ -72,7 +58,7 @@ export function TimesheetList() {
             </tr>
           </thead>
           <tbody>
-            {loading
+            {isLoading
               ? Array.from({ length: pageSize }).map((_, i) => (
                   <tr key={i} className="border-b last:border-0">
                     <td className="px-6 py-4">
@@ -141,7 +127,7 @@ export function TimesheetList() {
           <Button
             variant="outline"
             size="sm"
-            disabled={page <= 1 || loading}
+            disabled={page <= 1 || isLoading}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
             Previous
@@ -152,7 +138,7 @@ export function TimesheetList() {
           <Button
             variant="outline"
             size="sm"
-            disabled={page >= totalPages || loading}
+            disabled={page >= totalPages || isLoading}
             onClick={() => setPage((p) => p + 1)}
           >
             Next

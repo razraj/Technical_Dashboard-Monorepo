@@ -47,8 +47,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ week
         const entries = await prisma.timesheetEntry.findMany({
             where: { userId: target.userId, deletedAt: null, date: { gte: monday, lte: sunday } },
             include: {
-                project: { select: { id: true, name: true } },
-                task: { select: { id: true, title: true } }
+                project: { select: { id: true, name: true } }
             },
             orderBy: { createdAt: "asc" }
         });
