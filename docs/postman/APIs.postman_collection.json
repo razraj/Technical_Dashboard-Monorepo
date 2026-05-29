@@ -2,7 +2,7 @@
     "info": {
         "_postman_id": "tent-backend-api-collection",
         "name": "TenT Backend APIs",
-        "description": "Comprehensive API collection for `apps/backend`.\n\nFlow:\n1. Use **Auth > Signup** (optional) to create a user.\n2. Use **Auth > Login** to receive `auth_token` and `refresh_token` cookies.\n3. Call protected routes (`/auth/me`, `/user/*`, `/timesheet*`) with Postman cookie jar enabled.\n\nSeed user example: `alice@example.com` / `password123`.",
+        "description": "Comprehensive API collection for `apps/backend`.\n\nFlow:\n1. Use **Auth > Signup** (optional) to create a user.\n2. Use **Auth > Login** to receive `auth_token` and `refresh_token` cookies.\n3. Call protected routes (`/auth/me`, `/user/*`, `/timesheet/*`) with Postman cookie jar enabled.\n\nTimesheets are derived from a flat `TimesheetEntry` model (no stored `Timesheet`/status):\n- **Timesheets > Weekly Timesheet Listing (API-1)** returns the derived weeks + computed status.\n- **Timesheets > Week Detail (API-2)** returns one week's day-by-day breakdown.\n- **Entries** create/edit/soft-delete individual entries (self-only).\n\nSeed users (from `@repo/db` seed): `dave@example.com` (MANAGER) and `eve@example.com` (EMPLOYEE), both `password123`. The seed gives `eve` one COMPLETED (40h) and one INCOMPLETE (17h) week.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -15,7 +15,15 @@
             "value": ""
         },
         {
-            "key": "timesheetId",
+            "key": "weekStart",
+            "value": ""
+        },
+        {
+            "key": "projectId",
+            "value": ""
+        },
+        {
+            "key": "taskId",
             "value": ""
         },
         {
@@ -98,14 +106,14 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"username\": \"alice@example.com\",\n    \"password\": \"password123\"\n}"
+                            "raw": "{\n    \"username\": \"eve@example.com\",\n    \"password\": \"password123\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/login",
                             "host": ["{{baseUrl}}"],
                             "path": ["auth", "login"]
                         },
-                        "description": "Authenticates user by email/username + password. Sets `auth_token` and `refresh_token` HTTP-only cookies. Must run before protected routes."
+                        "description": "Authenticates user by email/username + password. Sets `auth_token` and `refresh_token` HTTP-only cookies. Must run before protected routes. Seed user `eve@example.com` has timesheet data."
                     },
                     "response": []
                 },
@@ -121,7 +129,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"email\": \"alice@example.com\"\n}"
+                            "raw": "{\n    \"email\": \"eve@example.com\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/forgot-password",
@@ -219,7 +227,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"firstName\": \"Alice\",\n    \"lastName\": \"Johnson\",\n    \"username\": \"alice.j\",\n    \"profilePic\": \"https://example.com/avatar.png\"\n}"
+                            "raw": "{\n    \"firstName\": \"Eve\",\n    \"lastName\": \"Davis\",\n    \"username\": \"eve.d\",\n    \"profilePic\": \"https://example.com/avatar.png\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/user/{{userId}}",
@@ -259,30 +267,21 @@
             "name": "Timesheets",
             "item": [
                 {
-                    "name": "List Timesheets",
-                    "request": {
-                        "method": "GET",
-                        "header": [],
-                        "url": {
-                            "raw": "{{baseUrl}}/timesheet",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["timesheet"]
-                        },
-                        "description": "Lists all timesheets for current authenticated user in descending sequence order."
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Create Timesheet",
+                    "name": "Weekly Timesheet Listing (API-1)",
                     "event": [
                         {
                             "listen": "test",
                             "script": {
                                 "exec": [
-                                    "if (pm.response.code === 201) {",
-                                    "    const body = pm.response.json();",
-                                    "    if (body.timesheet && body.timesheet.id) {",
-                                    "        pm.collectionVariables.set('timesheetId', body.timesheet.id);",
+                                    "pm.test('Listing succeeded', function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "const body = pm.response.json();",
+                                    "if (body && Array.isArray(body.weeks) && body.weeks.length) {",
+                                    "    // Prefer a week with logged hours so the detail call shows data.",
+                                    "    const week = body.weeks.find(function (w) { return w.totalHours > 0; }) || body.weeks[0];",
+                                    "    if (week && week.periodStart) {",
+                                    "        pm.collectionVariables.set('weekStart', week.periodStart);",
                                     "    }",
                                     "}"
                                 ],
@@ -291,74 +290,52 @@
                         }
                     ],
                     "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"title\": \"Week of 2026-05-26\",\n    \"periodStart\": \"2026-05-26\",\n    \"periodEnd\": \"2026-05-30\",\n    \"status\": \"INCOMPLETE\",\n    \"notes\": \"Created via Postman\"\n}"
-                        },
+                        "method": "GET",
+                        "header": [],
                         "url": {
-                            "raw": "{{baseUrl}}/timesheet",
+                            "raw": "{{baseUrl}}/timesheet/weeks?page=1&pageSize=10",
                             "host": ["{{baseUrl}}"],
-                            "path": ["timesheet"]
+                            "path": ["timesheet", "weeks"],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                },
+                                {
+                                    "key": "userId",
+                                    "value": "{{userId}}",
+                                    "description": "Optional. MANAGER/ADMIN only — view another user's weeks.",
+                                    "disabled": true
+                                }
+                            ]
                         },
-                        "description": "Creates a timesheet for authenticated user. Validates date-only format (`YYYY-MM-DD`) and period bounds."
+                        "description": "API-1 — Weekly Timesheet Listing.\n\nReturns the authenticated user's weeks derived from timesheet entries: a dense, gap-filled range from the first-entry week through the current week, newest first, paginated.\n\nEach row: `weekNumber`, `weekYear` (ISO 8601), `periodStart` (Monday), `periodEnd` (Friday), `totalHours` (sum over the full Mon-Sun ISO week), and computed `status` — `MISSING` (0h), `INCOMPLETE` (< weeklyCapacity), `COMPLETED` (>= weeklyCapacity).\n\nResponse: `{ weeks, page, pageSize, total }`.\n\nManagers/admins may pass `?userId=` (enable the disabled query param) to view another user's weeks; employees get 403 for others.\n\nThe test script stores a `periodStart` into the `weekStart` collection variable so the Week Detail request works immediately."
                     },
                     "response": []
                 },
                 {
-                    "name": "Get Timesheet",
+                    "name": "Week Detail (API-2)",
                     "request": {
                         "method": "GET",
                         "header": [],
                         "url": {
-                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}",
+                            "raw": "{{baseUrl}}/timesheet/weeks/{{weekStart}}",
                             "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "{{timesheetId}}"]
+                            "path": ["timesheet", "weeks", "{{weekStart}}"],
+                            "query": [
+                                {
+                                    "key": "userId",
+                                    "value": "{{userId}}",
+                                    "description": "Optional. MANAGER/ADMIN only — view another user's week.",
+                                    "disabled": true
+                                }
+                            ]
                         },
-                        "description": "Fetches one owned timesheet including nested entries."
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Update Timesheet",
-                    "request": {
-                        "method": "PATCH",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"status\": \"COMPLETED\",\n    \"submittedAt\": \"2026-05-30T17:00:00.000Z\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "{{timesheetId}}"]
-                        },
-                        "description": "Partially updates owned timesheet fields. At least one field is required."
-                    },
-                    "response": []
-                },
-                {
-                    "name": "Delete Timesheet",
-                    "request": {
-                        "method": "DELETE",
-                        "header": [],
-                        "url": {
-                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "{{timesheetId}}"]
-                        },
-                        "description": "Deletes an owned timesheet."
+                        "description": "API-2 — Detailed Day-by-Day View for one week.\n\n`weekStart` must be a **Monday** in `YYYY-MM-DD` (e.g. a `periodStart` returned by API-1; the listing's test script auto-fills `weekStart`). A non-Monday or invalid date returns 400.\n\nReturns: `weekNumber`, `weekYear`, `periodStart` (Mon), `periodEnd` (Fri), `totalHours`, `capacity` (the user's `weeklyCapacity`), `utilization` (%), computed `status`, and `days[]` (Monday-Friday). Each day has `date`, `dayLabel`, `totalHours`, and `entries[]` (id, hours, workType, description, nested `project {id,name}` and `task {id,title}|null`).\n\nManagers/admins may pass `?userId=`."
                     },
                     "response": []
                 }
@@ -367,20 +344,6 @@
         {
             "name": "Entries",
             "item": [
-                {
-                    "name": "List Entries",
-                    "request": {
-                        "method": "GET",
-                        "header": [],
-                        "url": {
-                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "{{timesheetId}}", "entry"]
-                        },
-                        "description": "Lists entries for one owned timesheet, ordered by work date."
-                    },
-                    "response": []
-                },
                 {
                     "name": "Create Entry",
                     "event": [
@@ -409,14 +372,14 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"workDate\": \"2026-05-26\",\n    \"hours\": 8,\n    \"startTime\": \"2026-05-26T09:00:00.000Z\",\n    \"endTime\": \"2026-05-26T17:00:00.000Z\",\n    \"isOvertime\": false,\n    \"description\": \"Regular workday\"\n}"
+                            "raw": "{\n    \"date\": \"2026-05-26\",\n    \"projectId\": \"{{projectId}}\",\n    \"workType\": \"Development\",\n    \"description\": \"Homepage Development\",\n    \"hours\": 8\n}"
                         },
                         "url": {
-                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry",
+                            "raw": "{{baseUrl}}/timesheet/entries",
                             "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "{{timesheetId}}", "entry"]
+                            "path": ["timesheet", "entries"]
                         },
-                        "description": "Adds an entry to one owned timesheet and recomputes rollup hours."
+                        "description": "Creates a timesheet entry for the authenticated user (self-only).\n\nBody: `date` (`YYYY-MM-DD`), `projectId` (must exist & not be soft-deleted — set the `projectId` collection variable to a seeded project's id), `workType`, `description`, `hours` (> 0 and <= 24). Optional `taskId` — if provided it must belong to the same project (add `\"taskId\": \"{{taskId}}\"`).\n\nReturns 201 `{ entry }` (with nested `project`/`task`). The test script stores the new id into `entryId`."
                     },
                     "response": []
                 },
@@ -432,28 +395,28 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"hours\": 9,\n    \"isOvertime\": true,\n    \"description\": \"Extended shift\"\n}"
+                            "raw": "{\n    \"hours\": 6,\n    \"workType\": \"Bug fixes\",\n    \"description\": \"Late ticket fix\"\n}"
                         },
                         "url": {
-                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry/{{entryId}}",
+                            "raw": "{{baseUrl}}/timesheet/entries/{{entryId}}",
                             "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "{{timesheetId}}", "entry", "{{entryId}}"]
+                            "path": ["timesheet", "entries", "{{entryId}}"]
                         },
-                        "description": "Partially updates an existing entry and recomputes timesheet rollups."
+                        "description": "Partially updates an owned entry (self-only; 404 if not owned). At least one field is required. Any of `date`, `projectId`, `workType`, `description`, `hours`, `taskId` (use `null` to clear the task). If `projectId` changes, the effective task must still belong to the new project. Returns 200 `{ entry }`."
                     },
                     "response": []
                 },
                 {
-                    "name": "Delete Entry",
+                    "name": "Delete Entry (soft)",
                     "request": {
                         "method": "DELETE",
                         "header": [],
                         "url": {
-                            "raw": "{{baseUrl}}/timesheet/{{timesheetId}}/entry/{{entryId}}",
+                            "raw": "{{baseUrl}}/timesheet/entries/{{entryId}}",
                             "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "{{timesheetId}}", "entry", "{{entryId}}"]
+                            "path": ["timesheet", "entries", "{{entryId}}"]
                         },
-                        "description": "Deletes one entry from an owned timesheet and recomputes rollups."
+                        "description": "Soft-deletes an owned entry (sets `deletedAt`; self-only; 404 if not owned or already deleted). Soft-deleted entries are excluded from all reads/aggregations. Returns 200 `{ success: true, id }`."
                     },
                     "response": []
                 }

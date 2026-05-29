@@ -1,6 +1,5 @@
 "use client";
 
-import { WeeksTimesheet } from "@/components/weeks_timesheet";
 import { Button } from "@repo/ui/components/button";
 import { useRouter } from "next/navigation";
 
@@ -17,10 +16,8 @@ export default function Page() {
                 <Button variant="outline" type="button" onClick={() => router.replace("/login")}>
                     Login
                 </Button>
-                <Button variant="outline" type="button" onClick={() => router.refresh()}>
-                    reload
-                </Button>
             </div>
+       
         </div>
     );
 }

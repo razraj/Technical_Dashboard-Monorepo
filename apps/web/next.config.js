@@ -1,3 +1,4 @@
+/* global process */
 const backendUrl =
     process.env.NODE_ENV === "production"
         ? `https://${process.env.DATABASE_HOST?.replace(/\/$/, "")}`

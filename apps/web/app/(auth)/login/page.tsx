@@ -1,51 +1,14 @@
 "use client";
-import { login } from "@/actions/auth";
 import { AuthGuard } from "@/components/auth-guard";
 import { LoginForm } from "@/components/login-form";
-import { getSanitizedRedirectPath } from "@/utils/url";
 import { GalleryVerticalEnd } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
 
-function LoginPageInner() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-
-    // const [email, setEmail] = useState("carol@example.com");
-    // const [password, setPassword] = useState("password123");
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [done, setDone] = useState(false);
-
-    function getRedirect() {
-        return searchParams.get("redirect")?.trim() ?? "/";
-    }
-
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError(null);
-        const redirect = getSanitizedRedirectPath(getRedirect());
-        console.log("🚀 ~ handleSubmit ~ redirect:", redirect);
-
-        const form = e.currentTarget;
-        const email = (form.querySelector("#email") as HTMLInputElement | null)?.value ?? "";
-        const password = (form.querySelector("#password") as HTMLInputElement | null)?.value ?? "";
-
-        try {
-            const res = await login(email, password);
-            if (!res.id) {
-                throw new Error("Something went wrong");
-            }
-            setDone(true);
-            setTimeout(() => router.replace(redirect), 1000);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to log in");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
+/**
+ * Login page - protected from authenticated users.
+ * Uses centralized AuthGuard component for authentication check.
+ * Submission, loading, and error handling live in LoginForm.
+ */
+export default function Page() {
     return (
         <AuthGuard requireUnauthenticated={true}>
             <div className="grid min-h-svh lg:grid-cols-2">
@@ -60,7 +23,7 @@ function LoginPageInner() {
                     </div>
                     <div className="flex flex-1 items-center justify-center">
                         <div className="w-full max-w-xs">
-                            <LoginForm onSubmit={handleSubmit} />
+                            <LoginForm />
                         </div>
                     </div>
                 </div>
@@ -76,13 +39,5 @@ function LoginPageInner() {
                 </div>
             </div>
         </AuthGuard>
-    );
-}
-
-export default function Page() {
-    return (
-        <Suspense>
-            <LoginPageInner />
-        </Suspense>
     );
 }

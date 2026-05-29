@@ -1,26 +1,8 @@
-/* eslint-disable */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { prisma, TimesheetStatus } from "./index.js";
+import { prisma, Role } from "./index.js";
 
 const DEFAULT_PASSWORD = process.env.DEFAULT_PASSWORD ?? "password123";
-
-const usersToCreate = [
-    {
-        email: "dave@example.com",
-        username: "dave",
-        firstName: "Dave",
-        lastName: "Brown",
-        password: DEFAULT_PASSWORD
-    },
-    {
-        email: "eve@example.com",
-        username: "eve",
-        firstName: "Eve",
-        lastName: "Davis",
-        password: DEFAULT_PASSWORD
-    }
-];
 
 function startOfDayUTC(d: Date): Date {
     const out = new Date(d);
@@ -45,188 +27,100 @@ function addDays(d: Date, days: number): Date {
     return out;
 }
 
-function atUTC(d: Date, hours: number, minutes: number): Date {
-    const out = new Date(d);
-    out.setUTCHours(hours, minutes, 0, 0);
-    return out;
-}
+async function main() {
+    console.log("Seeding database...");
 
-function isoDate(d: Date): string {
-    return d.toISOString().slice(0, 10);
-}
-
-async function seedTimesheetsForUser(userId: string, username: string, taskId: string, overtimeTaskId: string): Promise<void> {
-    const twoWeeksAgoMonday = mondayOfWeeksAgo(2);
-    const twoWeeksAgoFriday = addDays(twoWeeksAgoMonday, 4);
-
-    const completed = await prisma.timesheet.create({
+    const managerPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+    const manager = await prisma.user.create({
         data: {
-            userId,
-            sequenceNumber: 1,
-            status: TimesheetStatus.COMPLETED,
-            title: `Week of ${isoDate(twoWeeksAgoMonday)}`,
-            notes: null,
-            periodStart: twoWeeksAgoMonday,
-            periodEnd: twoWeeksAgoFriday,
-            totalHours: 40,
-            regularHours: 40,
-            overtimeHours: 0,
-            submittedAt: atUTC(twoWeeksAgoFriday, 17, 0)
+            email: "dave@example.com",
+            username: "dave",
+            firstName: "Dave",
+            lastName: "Brown",
+            role: Role.MANAGER,
+            password: managerPassword,
+            emailVerified: new Date()
         }
     });
+    console.log(`Created manager: ${manager.username}`);
 
+    const employeePassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+    const employee = await prisma.user.create({
+        data: {
+            email: "eve@example.com",
+            username: "eve",
+            firstName: "Eve",
+            lastName: "Davis",
+            role: Role.EMPLOYEE,
+            password: employeePassword,
+            emailVerified: new Date()
+        }
+    });
+    console.log(`Created employee: ${employee.username}`);
+
+    const project = await prisma.project.create({
+        data: {
+            name: "Homepage Redesign",
+            description: "Marketing site revamp",
+            managerId: manager.id
+        }
+    });
+    console.log(`Created project: ${project.name}`);
+
+    await prisma.activityLog.createMany({
+        data: [
+            { userId: manager.id, type: "LOGIN", description: "User logged in" },
+            { userId: employee.id, type: "TIMESHEET", description: "Logged weekly time" }
+        ]
+    });
+
+    // COMPLETED week (40h, two weeks ago, Mon-Fri @ 8h).
+    const completedMonday = mondayOfWeeksAgo(2);
     await prisma.timesheetEntry.createMany({
         data: [0, 1, 2, 3, 4].map((dayOffset) => ({
-            timesheetId: completed.id,
-            taskId,
-            workDate: addDays(twoWeeksAgoMonday, dayOffset),
+            userId: employee.id,
+            projectId: project.id,
+            date: addDays(completedMonday, dayOffset),
             hours: 8,
-            startTime: atUTC(addDays(twoWeeksAgoMonday, dayOffset), 9, 0),
-            endTime: atUTC(addDays(twoWeeksAgoMonday, dayOffset), 17, 0),
-            isOvertime: false,
-            description: "Regular workday"
+            workType: "Development",
+            description: "Homepage Development"
         }))
     });
 
+    // INCOMPLETE week (17h, last week, Mon + Tue only).
     const lastWeekMonday = mondayOfWeeksAgo(1);
-    const lastWeekFriday = addDays(lastWeekMonday, 4);
-    const lastWeekTuesday = addDays(lastWeekMonday, 1);
-
-    const incomplete = await prisma.timesheet.create({
-        data: {
-            userId,
-            sequenceNumber: 2,
-            status: TimesheetStatus.INCOMPLETE,
-            title: `Week of ${isoDate(lastWeekMonday)}`,
-            notes: "Still need to fill in Wed-Fri",
-            periodStart: lastWeekMonday,
-            periodEnd: lastWeekFriday,
-            totalHours: 17,
-            regularHours: 16,
-            overtimeHours: 1,
-            submittedAt: null
-        }
-    });
-
     await prisma.timesheetEntry.createMany({
         data: [
             {
-                timesheetId: incomplete.id,
-                taskId,
-                workDate: lastWeekMonday,
+                userId: employee.id,
+                projectId: project.id,
+                date: lastWeekMonday,
                 hours: 8,
-                startTime: atUTC(lastWeekMonday, 9, 0),
-                endTime: atUTC(lastWeekMonday, 17, 0),
-                isOvertime: false,
-                description: "Regular workday"
+                workType: "Development",
+                description: "Homepage Development"
             },
             {
-                timesheetId: incomplete.id,
-                taskId,
-                workDate: lastWeekTuesday,
+                userId: employee.id,
+                projectId: project.id,
+                date: addDays(lastWeekMonday, 1),
                 hours: 8,
-                startTime: atUTC(lastWeekTuesday, 9, 0),
-                endTime: atUTC(lastWeekTuesday, 17, 0),
-                isOvertime: false,
-                description: "Regular workday"
+                workType: "Development",
+                description: "Homepage Development"
             },
             {
-                timesheetId: incomplete.id,
-                taskId: overtimeTaskId,
-                workDate: lastWeekTuesday,
+                userId: employee.id,
+                projectId: project.id,
+                date: addDays(lastWeekMonday, 1),
                 hours: 1,
-                startTime: atUTC(lastWeekTuesday, 17, 0),
-                endTime: atUTC(lastWeekTuesday, 18, 0),
-                isOvertime: true,
+                workType: "Bug fixes",
                 description: "Late ticket fix"
             }
         ]
     });
 
-    console.log(`Created 2 timesheets (5 + 3 entries) for ${username}`);
-}
-
-async function main() {
-    console.log("Seeding database...");
-
-    const createdUsers: { id: string; username: string; email: string; password: string }[] = [];
-    for (const u of usersToCreate) {
-        const hashedPassword = await bcrypt.hash(u.password, 10);
-        const user = await prisma.user.create({
-            data: {
-                email: u.email,
-                username: u.username,
-                firstName: u.firstName,
-                lastName: u.lastName,
-                password: hashedPassword,
-                emailVerified: new Date()
-            }
-        });
-        createdUsers.push({ id: user.id, username: u.username, email: u.email, password: u.password });
-        console.log(`Created user: ${u.username} (${u.email})`);
-    }
-
-    let defaultTaskId: string | null = null;
-    let overtimeTaskId: string | null = null;
-
-    if (createdUsers[0]) {
-        await prisma.activityLog.createMany({
-            data: [
-                { userId: createdUsers[0].id, type: "LOGIN", description: "User logged in" },
-                { userId: createdUsers[0].id, type: "TIMESHEET", description: "Submitted weekly timesheet" },
-                { userId: createdUsers[0].id, type: "PROFILE_UPDATE", description: "Updated profile" }
-            ]
-        });
-        console.log("Created activity logs for", createdUsers[0].username);
-
-        const defaultProject = await prisma.project.create({
-            data: {
-                name: "Internal R&D",
-                description: "Internal Research & Development",
-                color: "#3B82F6",
-                createdById: createdUsers[0].id
-            }
-        });
-        console.log(`Created default project: ${defaultProject.name}`);
-
-        const task1 = await prisma.task.create({
-            data: {
-                projectId: defaultProject.id,
-                title: "Feature Development",
-                description: "Working on core product features",
-                type: "FEATURE",
-                status: "IN_PROGRESS",
-                createdById: createdUsers[0].id
-            }
-        });
-        defaultTaskId = task1.id;
-
-        const task2 = await prisma.task.create({
-            data: {
-                projectId: defaultProject.id,
-                title: "Bug Triage & Fixes",
-                description: "Investigating and resolving bugs",
-                type: "FIX",
-                status: "TODO",
-                createdById: createdUsers[0].id
-            }
-        });
-        overtimeTaskId = task2.id;
-        console.log("Created default tasks");
-    }
-
-    if (defaultTaskId && overtimeTaskId) {
-        for (let i = 0; i < Math.min(2, createdUsers.length); i++) {
-            const user = createdUsers[i];
-            if (!user) continue;
-            await seedTimesheetsForUser(user.id, user.username, defaultTaskId, overtimeTaskId);
-        }
-    }
-
     console.log("\n############# Login details #############");
-    createdUsers.forEach((u) => {
-        console.log(`  username: ${u.username}  |  email: ${u.email}  |  password: ${u.password}`);
-    });
+    console.log(`  username: dave  |  email: dave@example.com  |  password: ${DEFAULT_PASSWORD}`);
+    console.log(`  username: eve   |  email: eve@example.com   |  password: ${DEFAULT_PASSWORD}`);
     console.log("########################################\n");
     console.log("Seed completed.");
 }
