@@ -4,6 +4,8 @@
 
 End-to-end authentication flow and routing patterns between the web and backend applications.
 
+**Not server-side sessions:** auth state is JWTs in httpOnly cookies. `auth-session.ts` is a login/cookie helper, not a session store.
+
 ## Auth Flow Step-by-Step
 
 1. User POSTs to `/api/auth/login` on the web origin (via `fetchWithoutAuth` in `apps/web/actions/auth.ts`)
@@ -13,6 +15,7 @@ End-to-end authentication flow and routing patterns between the web and backend 
 5. Subsequent API calls go to `/api/*` (rewritten to backend) with cookies attached
 6. Backend `apps/backend/proxy.ts` reads the cookie, verifies JWT (`jose`), sets `x-user-id` header
 7. Protected route handlers read `x-user-id` from `request.headers`
+8. **Refresh:** `/auth/refresh` reads `refresh_token` cookie, validates against DB, reissues `auth_token`
 
 ## Route Handlers
 
@@ -20,4 +23,4 @@ End-to-end authentication flow and routing patterns between the web and backend 
 - **Protected route handlers:** Read `x-user-id` from headers (set by proxy). Do NOT verify tokens in route handlers.
 - **New API routes:** Add under `apps/backend/app/`. If public, add the path to the skip list in `apps/backend/proxy.ts`.
 - **Web API calls:** Use `fetchWithAuth()` / `fetchWithoutAuth()` from `@/utils/api`.
-- **Production note:** When web and backend deploy as separate Vercel projects, web rewrites must target `API_URL` (public backend origin). Dedicated web `/api/auth/*` route handlers may be needed for correct cookie domains — see architectural-decisions §3.
+- **Production note:** Web rewrites use `DATABASE_HOST` in `apps/web/next.config.js` (verify before changing env var names). Dedicated web `/api/auth/*` route handlers may be needed for correct cookie domains — see architectural-decisions §3.

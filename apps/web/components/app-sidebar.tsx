@@ -5,16 +5,12 @@ import { TeamSwitcher } from "@/components/team-switcher";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@repo/ui/components/sidebar";
 import {
     AudioWaveform,
-    BookOpen,
-    Bot,
     Command,
-    CreditCard,
     GalleryVerticalEnd,
     LucideIcon,
     Settings,
     Settings2,
-    SquareTerminal,
-    UsersIcon
+    SquareTerminal
 } from "lucide-react";
 import * as React from "react";
 import { NavUser } from "./nav-user";

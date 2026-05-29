@@ -8,6 +8,7 @@ Guidelines for writing and running tests in the monorepo. Backend API tests are 
 
 - **No test harness configured** — `apps/backend` has no `test` script or vitest config.
 - **`yarn test`** runs turbo but executes zero tasks until packages define `test` scripts.
+- **Web E2E:** Playwright in `apps/web/e2e/` — `yarn workspace web test:e2e` (uses `E2E_EMAIL` / `E2E_PASSWORD` or seed defaults).
 
 ## Intended Backend Test Structure
 
