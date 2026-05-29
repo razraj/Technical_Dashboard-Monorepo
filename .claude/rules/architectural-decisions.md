@@ -17,7 +17,7 @@ Verify against disk before assuming features exist (`find apps/backend/app -type
 |---|---|
 | Auth routes | `/auth/login`, `/auth/logout`, `/auth/me`, `/auth/refresh` |
 | User routes | `/user`, `/user/[userId]`, `/user/[userId]/password` |
-| Timesheets | Prisma models only — API planned in `docs/superpowers/` |
+| Timesheets | `/timesheet/weeks`, `/timesheet/weeks/[weekStart]`, `/timesheet/entries`, `/timesheet/entries/[entryId]` |
 | Queues / webhooks / files / history | Not in current codebase |
 
 ---
@@ -28,10 +28,14 @@ Verify against disk before assuming features exist (`find apps/backend/app -type
 - **Cross-boundary access:**
   - `apps/backend` is the **only** layer that talks to the database via `@repo/db`.
   - `apps/web` must **never** import Prisma or DB clients directly.
-  - Shared code must live in `packages/*` (e.g. `@repo/db`, `@repo/ui`, `@repo/config-eslint`, `@repo/config-typescript`) — do not copy-paste between apps.
+  - Shared code must live in `packages/*` (e.g. `@repo/db`, `@repo/ui`, `@repo/eslint-config`, `@repo/typescript-config`) — do not copy-paste between apps.
 - **Tooling:** Use **yarn workspaces** (lockfile: `yarn.lock`, Node ≥22) and the existing Turborepo pipeline. Do not introduce npm/pnpm lockfiles or change workspace tooling without explicit approval.
-- **Shared configs:** ESLint and TypeScript configs live in `packages/config-*` and are applied via workspace settings — do not inline large config blocks per app.
-- **Turbo `envMode: strict`:** Every env var consumed by a task must be declared in [turbo.jsonc](../../turbo.jsonc) `global.env` — `passThroughEnv` alone does not satisfy `turbo/no-undeclared-env-vars`.
+- **Shared configs:** ESLint and TypeScript configs live in `@repo/eslint-config` and `@repo/typescript-config` — do not inline large config blocks per app.
+- **Turbo env vars:** Every env var consumed by a task must be declared in [turbo.json](../../turbo.json) `global.env` — `passThroughEnv` alone does not satisfy `turbo/no-undeclared-env-vars`.
+- **Prefer workspace dependencies:** Use `@repo/ui`, `@repo/db`, `@repo/eslint-config`, and `@repo/typescript-config` before duplicating npm packages across apps. Full guide: [workspace-dependencies.md](workspace-dependencies.md).
+- **Web server state:** Use `@tanstack/react-query` (hooks in `apps/web/hooks/`, keys in `apps/web/lib/query-keys.ts`) — not raw `useEffect` fetch loops for API data.
+- **Web forms:** Use `@tanstack/react-form-nextjs` with `@repo/ui` Field components — do not introduce alternate form libraries.
+- **Web UI:** Import from `@repo/ui/components/*`; add reusable primitives to `packages/ui`, not `apps/web`.
 
 ## 2. Database & Data Access
 
@@ -54,7 +58,7 @@ Verify against disk before assuming features exist (`find apps/backend/app -type
   - New protected backend routes must read `x-user-id` from request headers — do not re-parse cookies or trust client-provided user IDs.
   - Public routes are listed inline in [apps/backend/proxy.ts](../../apps/backend/proxy.ts) — add new public paths there.
   - `allowedHosts` in `proxy.ts` must include any new dev hostname.
-- **Web auth traffic:** Browser calls `/api/auth/*` on the web origin; `apps/web/next.config.js` rewrites to the backend in dev. Backend login sets cookies on the response. For split Vercel deployments, ensure production rewrites target `API_URL` and cookie domains are correct.
+- **Web auth traffic:** Browser calls `/api/auth/*` on the web origin; `apps/web/next.config.js` rewrites to the backend in dev. Backend login sets cookies on the response. For split Vercel deployments, production rewrites use `DATABASE_HOST` — ensure cookie domains are correct.
 
 ## 4. Web ↔ Backend Traffic Flow
 
@@ -71,11 +75,11 @@ Verify against disk before assuming features exist (`find apps/backend/app -type
 
 - **Required everywhere:** `DATABASE_URL`, `JWT_SECRET` (must match across web + backend).
 - **Source of truth:** root `.env`, distributed to apps via `yarn env:cp` (copies to `apps/backend/.env`, `apps/web/.env`, `packages/db/.env`).
-- **Vercel:** set per-project in the Vercel dashboard. Backend needs DB + auth secrets; web needs `API_URL` + `JWT_SECRET`.
+- **Vercel:** set per-project in the Vercel dashboard. Backend needs DB + auth secrets; web needs `DATABASE_HOST` + `JWT_SECRET`.
 
 ## 7. Deployment Topology
 
-- **Two Vercel projects:** `apps/web` and `apps/backend` deploy independently. Web production `API_URL` must be the public backend origin.
+- **Two Vercel projects:** `apps/web` and `apps/backend` deploy independently. Web production `DATABASE_HOST` must be the public backend origin.
 - **Database:** Neon PostgreSQL, accessed via the pooler URL in production for serverless cold-start friendliness.
 - Deployment diagram: if a detailed diagram is created, store it in `/docs/` (root) as a Markdown or image file.
 

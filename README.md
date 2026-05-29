@@ -86,6 +86,19 @@ yarn workspace web test:e2e   # Playwright; requires dev servers or PW_SKIP_WEBS
 | `packages/eslint-config` | Shared ESLint config |
 | `packages/typescript-config` | Shared TypeScript config |
 
+## Dependencies & patterns
+
+**Prefer workspace packages** (`@repo/ui`, `@repo/db`, shared configs) before adding duplicate npm deps to individual apps.
+
+| Layer | Standard libraries |
+|-------|-------------------|
+| Web server state | `@tanstack/react-query` — hooks in `apps/web/hooks/`, keys in `apps/web/lib/query-keys.ts` |
+| Web forms | `@tanstack/react-form-nextjs` + `@repo/ui` Field components |
+| Web UI | `@repo/ui` components and styles |
+| Backend data | `@repo/db` (backend only) |
+
+See [.claude/rules/workspace-dependencies.md](.claude/rules/workspace-dependencies.md) for import examples, anti-patterns, and when to create a new package.
+
 ## Frameworks & libraries
 
 ### Monorepo & tooling
@@ -157,6 +170,8 @@ yarn workspace web test:e2e   # Playwright; requires dev servers or PW_SKIP_WEBS
 
 ### Documentation
 
+- Workspace deps & web patterns: `.claude/rules/workspace-dependencies.md`
+- Web app guide: `apps/web/README.md`
 - Agent specs and plans: `docs/superpowers/`
 - Contributor constraints and auth flow: `.claude/rules/`
 - Quick command reference for agents: `CLAUDE.md`
