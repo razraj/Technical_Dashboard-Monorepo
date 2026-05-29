@@ -1,4 +1,4 @@
-import { User, UserResponse } from "@/types";
+import { User } from "@/types";
 import { fetchWithoutAuth } from "@/utils/api";
 import { toast } from "@repo/ui/components";
 import { clearUserFromLocalStorage } from "./auth-check";
@@ -19,7 +19,7 @@ export async function login(email: string, password: string) {
     localStorage.setItem("user", JSON.stringify(data.user));
     toast.success("Logged in successfully");
     window?.location?.replace?.("/dashboard");
-    return data.user;
+    return data;
 }
 
 export interface SignupPayload {

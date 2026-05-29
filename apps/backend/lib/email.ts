@@ -1,7 +1,6 @@
 import { emailVerificationHtml } from "@/common/emailer-html/email-verification";
 import { passwordResetHtml } from "@/common/emailer-html/password-reset";
 import { backendUrl } from "@/utils/auth";
-import "dotenv/config";
 import { Resend } from "resend";
 
 function verificationLink(token: string): string {
@@ -12,8 +11,8 @@ function verificationLink(token: string): string {
 
 // TODO: Replace/update emailOptions with the actual data before production.
 export async function sendEmail(link: string, from: string, to: string, subject: string, html: string) {
-    if (process.env.NODE_ENV !== "production") {
-        console.info("[email:dev]", subject, "for", to, "->", link);
+    if (process.env.NODE_ENV !== "production" && false) {
+        console.info("[email:dev] Password reset link for", to, link);
         return;
     }
     const resend = new Resend(process.env.RESEND_API_KEY);
