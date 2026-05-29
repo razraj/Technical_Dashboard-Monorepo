@@ -15,23 +15,13 @@ import { toast } from "@repo/ui/components"
 import { AddEntryModal } from "@/components/add-entry-modal"
 import { deleteEntry } from "@/actions/timesheet"
 import { TimesheetEntry, WeekDetail } from "@/types"
-
-function formatRange(periodStart: string, periodEnd: string): string {
-  const start = new Date(periodStart)
-  const end = new Date(periodEnd)
-  const month = (d: Date) => d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" })
-  const day = (d: Date) => d.toLocaleDateString("en-US", { day: "numeric", timeZone: "UTC" })
-  const year = end.toLocaleDateString("en-US", { year: "numeric", timeZone: "UTC" })
-  if (month(start) === month(end)) {
-    return `${day(start)} - ${day(end)} ${month(end)}, ${year}`
-  }
-  return `${day(start)} ${month(start)} - ${day(end)} ${month(end)}, ${year}`
-}
+import { formatWeekRange } from "@/lib/format"
 
 export function WeeksTimesheet({ detail, onChanged }: { detail: WeekDetail; onChanged: () => void }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDate, setModalDate] = useState(detail.periodStart)
   const [editEntry, setEditEntry] = useState<TimesheetEntry | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const completionPct = Math.min(100, detail.utilization)
 
@@ -48,6 +38,8 @@ export function WeeksTimesheet({ detail, onChanged }: { detail: WeekDetail; onCh
   }
 
   const handleDelete = async (entryId: string) => {
+    if (deletingId) return
+    setDeletingId(entryId)
     try {
       await deleteEntry(entryId)
       toast.success("Entry deleted")
@@ -55,6 +47,8 @@ export function WeeksTimesheet({ detail, onChanged }: { detail: WeekDetail; onCh
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete entry"
       toast.error(message)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -63,7 +57,7 @@ export function WeeksTimesheet({ detail, onChanged }: { detail: WeekDetail; onCh
       <CardHeader className="flex items-start justify-between gap-4 px-4 sm:px-6">
         <div>
           <CardTitle className="text-2xl font-semibold tracking-tight">This week&apos;s timesheet</CardTitle>
-          <p className="mt-2 text-sm text-muted-foreground">{formatRange(detail.periodStart, detail.periodEnd)}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{formatWeekRange(detail.periodStart, detail.periodEnd)}</p>
         </div>
         <div className="min-w-[170px]">
           <div className="mb-1 flex items-center justify-between text-sm">
@@ -108,7 +102,7 @@ export function WeeksTimesheet({ detail, onChanged }: { detail: WeekDetail; onCh
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon-sm" className="size-7">
+                        <Button variant="ghost" size="icon-sm" className="size-7" disabled={deletingId === entry.id}>
                           <MoreHorizontalIcon className="size-4" />
                           <span className="sr-only">Open row menu</span>
                         </Button>
