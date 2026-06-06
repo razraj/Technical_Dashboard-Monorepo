@@ -29,6 +29,10 @@
         {
             "key": "entryId",
             "value": ""
+        },
+        {
+            "key": "memberId",
+            "value": ""
         }
     ],
     "item": [
@@ -42,8 +46,12 @@
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/",
-                            "host": ["{{baseUrl}}"],
-                            "path": [""]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                ""
+                            ]
                         },
                         "description": "Sanity endpoint for backend reachability. Returns a simple JSON message."
                     },
@@ -70,8 +78,13 @@
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/signup",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["auth", "signup"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "signup"
+                            ]
                         },
                         "description": "Creates a new user account. Enforces unique email and username. Returns the created user profile (without password)."
                     },
@@ -110,8 +123,13 @@
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/login",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["auth", "login"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
                         },
                         "description": "Authenticates user by email/username + password. Sets `auth_token` and `refresh_token` HTTP-only cookies. Must run before protected routes. Seed user `eve@example.com` has timesheet data."
                     },
@@ -133,8 +151,13 @@
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/forgot-password",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["auth", "forgot-password"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "forgot-password"
+                            ]
                         },
                         "description": "Generates and stores a password reset token if the email exists. Response is intentionally generic to avoid account enumeration."
                     },
@@ -147,8 +170,13 @@
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/auth/refresh",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["auth", "refresh"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "refresh"
+                            ]
                         },
                         "description": "Uses `refresh_token` cookie to mint a fresh `auth_token` cookie. Fails if refresh token is expired, missing, or not the latest one stored for user."
                     },
@@ -161,8 +189,13 @@
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/auth/me",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["auth", "me"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "me"
+                            ]
                         },
                         "description": "Returns current authenticated user profile resolved from `auth_token` via backend proxy."
                     },
@@ -175,8 +208,13 @@
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/auth/logout",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["auth", "logout"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "logout"
+                            ]
                         },
                         "description": "Clears auth cookies and invalidates stored refresh token for the authenticated user."
                     },
@@ -194,8 +232,12 @@
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/user",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["user"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "user"
+                            ]
                         },
                         "description": "Returns all non-deleted users. Useful for admin/testing visibility."
                     },
@@ -208,8 +250,13 @@
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/user/{{userId}}",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["user", "{{userId}}"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "user",
+                                "{{userId}}"
+                            ]
                         },
                         "description": "Returns full user detail for authenticated user context. `userId` must match token identity."
                     },
@@ -231,8 +278,13 @@
                         },
                         "url": {
                             "raw": "{{baseUrl}}/user/{{userId}}",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["user", "{{userId}}"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "user",
+                                "{{userId}}"
+                            ]
                         },
                         "description": "Updates the authenticated user's profile fields. Route enforces path user ID equals authenticated user ID."
                     },
@@ -254,8 +306,14 @@
                         },
                         "url": {
                             "raw": "{{baseUrl}}/user/{{userId}}/password",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["user", "{{userId}}", "password"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "user",
+                                "{{userId}}",
+                                "password"
+                            ]
                         },
                         "description": "Changes current user's password after verifying `oldPassword`."
                     },
@@ -294,8 +352,13 @@
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/timesheet/weeks?page=1&pageSize=10",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "weeks"],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "timesheet",
+                                "weeks"
+                            ],
                             "query": [
                                 {
                                     "key": "page",
@@ -324,8 +387,14 @@
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/timesheet/weeks/{{weekStart}}",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "weeks", "{{weekStart}}"],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "timesheet",
+                                "weeks",
+                                "{{weekStart}}"
+                            ],
                             "query": [
                                 {
                                     "key": "userId",
@@ -376,8 +445,13 @@
                         },
                         "url": {
                             "raw": "{{baseUrl}}/timesheet/entries",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "entries"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "timesheet",
+                                "entries"
+                            ]
                         },
                         "description": "Creates a timesheet entry for the authenticated user (self-only).\n\nBody: `date` (`YYYY-MM-DD`), `projectId` (must exist & not be soft-deleted — set the `projectId` collection variable to a seeded project's id), `workType`, `description`, `hours` (> 0 and <= 24). Optional `taskId` — if provided it must belong to the same project (add `\"taskId\": \"{{taskId}}\"`).\n\nReturns 201 `{ entry }` (with nested `project`/`task`). The test script stores the new id into `entryId`."
                     },
@@ -399,8 +473,14 @@
                         },
                         "url": {
                             "raw": "{{baseUrl}}/timesheet/entries/{{entryId}}",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "entries", "{{entryId}}"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "timesheet",
+                                "entries",
+                                "{{entryId}}"
+                            ]
                         },
                         "description": "Partially updates an owned entry (self-only; 404 if not owned). At least one field is required. Any of `date`, `projectId`, `workType`, `description`, `hours`, `taskId` (use `null` to clear the task). If `projectId` changes, the effective task must still belong to the new project. Returns 200 `{ entry }`."
                     },
@@ -413,10 +493,198 @@
                         "header": [],
                         "url": {
                             "raw": "{{baseUrl}}/timesheet/entries/{{entryId}}",
-                            "host": ["{{baseUrl}}"],
-                            "path": ["timesheet", "entries", "{{entryId}}"]
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "timesheet",
+                                "entries",
+                                "{{entryId}}"
+                            ]
                         },
                         "description": "Soft-deletes an owned entry (sets `deletedAt`; self-only; 404 if not owned or already deleted). Soft-deleted entries are excluded from all reads/aggregations. Returns 200 `{ success: true, id }`."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Projects",
+            "item": [
+                {
+                    "name": "List Projects",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/project",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "project"
+                            ]
+                        },
+                        "description": "Lists projects visible to the authenticated user. Admins see all, managers/employees see assigned projects."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Project",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201) {",
+                                    "    const body = pm.response.json();",
+                                    "    if (body.project && body.project.id) {",
+                                    "        pm.collectionVariables.set('projectId', body.project.id);",
+                                    "    }",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"New Project\",\n    \"description\": \"Project Description\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/project",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "project"
+                            ]
+                        },
+                        "description": "Creates a new project. Requires MANAGER or ADMIN role."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Project Detail",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/project/{{projectId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "project",
+                                "{{projectId}}"
+                            ]
+                        },
+                        "description": "Gets detailed information about a project, including members."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Project",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated Project Name\",\n    \"description\": \"Updated description\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/project/{{projectId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "project",
+                                "{{projectId}}"
+                            ]
+                        },
+                        "description": "Updates project details. Requires MANAGER (of the project) or ADMIN role."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Project",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/project/{{projectId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "project",
+                                "{{projectId}}"
+                            ]
+                        },
+                        "description": "Soft-deletes a project. Requires MANAGER (of the project) or ADMIN role."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Add Project Member",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"eve\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/project/{{projectId}}/members",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "project",
+                                "{{projectId}}",
+                                "members"
+                            ]
+                        },
+                        "description": "Adds a user to the project by username. Requires MANAGER (of the project) or ADMIN role."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Remove Project Member",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/project/{{projectId}}/members/{{memberId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "project",
+                                "{{projectId}}",
+                                "members",
+                                "{{memberId}}"
+                            ]
+                        },
+                        "description": "Removes a user from the project. Requires MANAGER (of the project) or ADMIN role."
                     },
                     "response": []
                 }
