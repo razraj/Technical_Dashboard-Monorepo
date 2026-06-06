@@ -6,7 +6,7 @@ export interface User {
     lastName?: string | null;
     profilePic?: string | null;
     refreshToken?: string | null;
-    role?: "ADMIN" | "MANAGER" | "EMPLOYEE";
+    role: "ADMIN" | "MANAGER" | "EMPLOYEE";
 }
 
 export const UserResponseDefault = {
