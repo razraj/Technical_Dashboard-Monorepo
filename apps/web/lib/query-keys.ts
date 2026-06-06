@@ -1,4 +1,7 @@
 export const queryKeys = {
+    user: {
+        me: ["user", "me"] as const,
+    },
     weeks: {
         all: ["weeks"] as const,
         list: (page: number, pageSize: number, scope?: string, projectId?: string) =>
@@ -8,5 +11,6 @@ export const queryKeys = {
     },
     projects: {
         all: ["projects"] as const,
+        detail: (id: string) => ["projects", id] as const,
     },
 } as const;

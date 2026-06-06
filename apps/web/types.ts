@@ -6,6 +6,7 @@ export interface User {
     lastName?: string | null;
     profilePic?: string | null;
     refreshToken?: string | null;
+    role?: "ADMIN" | "MANAGER" | "EMPLOYEE";
 }
 
 export const UserResponseDefault = {
@@ -18,6 +19,7 @@ export type UserResponse = typeof UserResponseDefault;
 export interface Project {
     id: string;
     name: string;
+    description?: string | null;
 }
 
 export type WeekStatus = "MISSING" | "INCOMPLETE" | "COMPLETED";
@@ -80,4 +82,21 @@ export interface WeekDetail {
     utilization: number;
     status: WeekStatus;
     days: DayDetail[];
+}
+
+export interface ProjectMemberUser {
+    id: string;
+    username: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+}
+
+export interface ProjectDetail {
+    id: string;
+    name: string;
+    description: string | null;
+    managerId: string;
+    createdAt: string;
+    members: ProjectMemberUser[];
 }
