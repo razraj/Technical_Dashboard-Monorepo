@@ -1,4 +1,4 @@
-import { Project, TimesheetEntry, TimesheetScope, WeekDetail, WeeksResponse } from "@/types";
+import { TimesheetEntry, TimesheetScope, WeekDetail, WeeksResponse } from "@/types";
 import { fetchWithAuth } from "@/utils/api";
 
 export interface EntryPayload {
@@ -35,9 +35,6 @@ export const getWeeks = (
 
 export const getWeekDetail = (weekStart: string, options?: TimesheetQueryOptions): Promise<WeekDetail> =>
     fetchWithAuth(`/timesheet/weeks/${weekStart}${buildTimesheetQuery(options)}`, { method: "GET" });
-
-export const getProjects = (): Promise<{ projects: Project[] }> =>
-    fetchWithAuth(`/project`, { method: "GET" });
 
 export const createEntry = (payload: EntryPayload): Promise<{ entry: TimesheetEntry }> =>
     fetchWithAuth(`/timesheet/entries`, { method: "POST", body: JSON.stringify(payload) });

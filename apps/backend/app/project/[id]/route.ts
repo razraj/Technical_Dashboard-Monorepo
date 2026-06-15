@@ -1,24 +1,16 @@
 import prisma from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import { updateProjectSchema } from "@/lib/zod-schemas";
+import { updateProjectSchema } from "@/common/ZodSchema";
+import { forbiddenResponse, getCaller, unauthorizedResponse } from "@/lib/caller";
 
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
     try {
-        const callerId = req.headers.get("x-user-id");
-        if (!callerId) {
-            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-        }
-
-        const caller = await prisma.user.findUnique({
-            where: { id: callerId },
-            select: { role: true }
-        });
-
+        const caller = await getCaller(req.headers.get("x-user-id"));
         if (!caller) {
-            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+            return unauthorizedResponse();
         }
 
         const resolvedParams = await params;
@@ -35,33 +27,32 @@ export async function GET(
                                 firstName: true,
                                 lastName: true,
                                 email: true,
-                            }
-                        }
-                    }
-                }
-            }
+                            },
+                        },
+                    },
+                },
+            },
         });
 
         if (!project) {
             return NextResponse.json({ message: "Project not found" }, { status: 404 });
         }
 
-        // Access check
-        const isManager = project.managerId === callerId;
-        const isMember = project.members.some(m => m.user.id === callerId);
-        if (caller.role !== "ADMIN" && !isManager && !isMember) {
-            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+        if (caller.role === "EMPLOYEE") {
+            const isMember = project.members.some((m) => m.user.id === caller.id);
+            if (!isMember) {
+                return forbiddenResponse();
+            }
         }
 
-        // Flatten members array to match ProjectDetail type
         const formattedProject = {
             ...project,
-            members: project.members.map(m => m.user)
+            members: project.members.map((m) => m.user),
         };
 
         return NextResponse.json({ project: formattedProject }, { status: 200 });
     } catch (error) {
-        console.log("🚀 ~ GET /project/[id] ~ error:", error);
+        console.error("GET /project/[id] error:", error);
         return NextResponse.json({ message: "Error fetching project" }, { status: 500 });
     }
 }
@@ -69,35 +60,30 @@ export async function GET(
 export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
     try {
-        const callerId = req.headers.get("x-user-id");
-        if (!callerId) {
-            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        const caller = await getCaller(req.headers.get("x-user-id"));
+        if (!caller) {
+            return unauthorizedResponse();
         }
 
-        const caller = await prisma.user.findUnique({
-            where: { id: callerId },
-            select: { role: true }
-        });
-
-        if (!caller || (caller.role !== "ADMIN" && caller.role !== "MANAGER")) {
-            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+        if (caller.role !== "ADMIN" && caller.role !== "MANAGER") {
+            return forbiddenResponse();
         }
 
         const resolvedParams = await params;
 
         const project = await prisma.project.findUnique({
             where: { id: resolvedParams.id, deletedAt: null },
-            select: { managerId: true }
+            select: { managerId: true },
         });
 
         if (!project) {
             return NextResponse.json({ message: "Project not found" }, { status: 404 });
         }
 
-        if (caller.role !== "ADMIN" && project.managerId !== callerId) {
-            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+        if (caller.role !== "ADMIN" && project.managerId !== caller.id) {
+            return forbiddenResponse();
         }
 
         const body = await req.json();
@@ -111,12 +97,12 @@ export async function PATCH(
             data: {
                 name: parsed.data.name,
                 description: parsed.data.description,
-            }
+            },
         });
 
         return NextResponse.json({ message: "Project updated", project: updated }, { status: 200 });
     } catch (error) {
-        console.log("🚀 ~ PATCH /project/[id] ~ error:", error);
+        console.error("PATCH /project/[id] error:", error);
         return NextResponse.json({ message: "Error updating project" }, { status: 500 });
     }
 }
@@ -124,45 +110,40 @@ export async function PATCH(
 export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
     try {
-        const callerId = req.headers.get("x-user-id");
-        if (!callerId) {
-            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        const caller = await getCaller(req.headers.get("x-user-id"));
+        if (!caller) {
+            return unauthorizedResponse();
         }
 
-        const caller = await prisma.user.findUnique({
-            where: { id: callerId },
-            select: { role: true }
-        });
-
-        if (!caller || (caller.role !== "ADMIN" && caller.role !== "MANAGER")) {
-            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+        if (caller.role !== "ADMIN" && caller.role !== "MANAGER") {
+            return forbiddenResponse();
         }
 
         const resolvedParams = await params;
 
         const project = await prisma.project.findUnique({
             where: { id: resolvedParams.id, deletedAt: null },
-            select: { managerId: true }
+            select: { managerId: true },
         });
 
         if (!project) {
             return NextResponse.json({ message: "Project not found" }, { status: 404 });
         }
 
-        if (caller.role !== "ADMIN" && project.managerId !== callerId) {
-            return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+        if (caller.role !== "ADMIN" && project.managerId !== caller.id) {
+            return forbiddenResponse();
         }
 
         await prisma.project.update({
             where: { id: resolvedParams.id },
-            data: { deletedAt: new Date() }
+            data: { deletedAt: new Date() },
         });
 
         return NextResponse.json({ message: "Project deleted" }, { status: 200 });
     } catch (error) {
-        console.log("🚀 ~ DELETE /project/[id] ~ error:", error);
+        console.error("DELETE /project/[id] error:", error);
         return NextResponse.json({ message: "Error deleting project" }, { status: 500 });
     }
 }

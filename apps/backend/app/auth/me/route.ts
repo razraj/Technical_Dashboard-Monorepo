@@ -1,7 +1,8 @@
 import prisma from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { unauthorizedResponse } from "@/lib/caller";
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<NextResponse> {
     try {
         const userId = req.headers.get("x-user-id");
         if (!userId) {
@@ -18,17 +19,17 @@ export async function GET(req: NextRequest) {
                 profilePic: true,
                 role: true,
                 createdAt: true,
-                updatedAt: true
-            }
+                updatedAt: true,
+            },
         });
 
         if (!user) {
-            return NextResponse.json({ message: "User not found" }, { status: 401 });
+            return unauthorizedResponse();
         }
 
         return NextResponse.json({ user }, { status: 200 });
     } catch (error) {
-        console.log("🚀 ~ GET ~ error:", error);
+        console.error("GET /auth/me error:", error);
         return NextResponse.json({ message: "Error fetching user" }, { status: 500 });
     }
 }

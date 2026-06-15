@@ -12,10 +12,11 @@ import {
 } from "@/actions/projects";
 import { queryKeys } from "@/lib/query-keys";
 
-export function useProjects() {
+export function useProjects(enabled = true) {
     return useQuery({
         queryKey: queryKeys.projects.all,
         queryFn: getProjects,
+        enabled,
         select: (data) => data.projects,
     });
 }
@@ -25,6 +26,7 @@ export function useProject(id: string) {
         queryKey: queryKeys.projects.detail(id),
         queryFn: () => getProject(id),
         select: (data) => data.project,
+        enabled: Boolean(id),
     });
 }
 
@@ -66,6 +68,7 @@ export function useAddProjectMember() {
         mutationFn: ({ projectId, username }: { projectId: string; username: string }) => addProjectMember(projectId, username),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(variables.projectId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
         },
     });
 }
@@ -76,6 +79,7 @@ export function useRemoveProjectMember() {
         mutationFn: ({ projectId, memberId }: { projectId: string; memberId: string }) => removeProjectMember(projectId, memberId),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(variables.projectId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
         },
     });
 }

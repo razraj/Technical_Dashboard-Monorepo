@@ -3,6 +3,7 @@
 import { useForm } from "@tanstack/react-form-nextjs";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AuthGuard } from "@/components/auth-guard";
+import { FormFieldError } from "@/components/form-field-error";
 import { useCurrentUser, useUpdateProfile, useChangePassword } from "@/hooks/use-user-queries";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@repo/ui/components/breadcrumb";
 import { Button } from "@repo/ui/components/button";
@@ -13,7 +14,15 @@ import { Separator } from "@repo/ui/components/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@repo/ui/components/sidebar";
 import { toast } from "@repo/ui/components";
 
-function ProfileForm({ userId, defaultValues }: { userId: string; defaultValues: { firstName: string; lastName: string; username: string } }) {
+function ProfileForm({
+    userId,
+    formKey,
+    defaultValues,
+}: {
+    userId: string;
+    formKey: string;
+    defaultValues: { firstName: string; lastName: string; username: string };
+}) {
     const updateProfile = useUpdateProfile();
 
     const form = useForm({
@@ -30,13 +39,17 @@ function ProfileForm({ userId, defaultValues }: { userId: string; defaultValues:
 
     return (
         <form
+            key={formKey}
             onSubmit={(e) => {
                 e.preventDefault();
                 void form.handleSubmit();
             }}
         >
             <FieldGroup>
-                <form.Field name="firstName">
+                <form.Field
+                    name="firstName"
+                    validators={{ onChange: ({ value }) => (value.trim() ? undefined : "First name is required") }}
+                >
                     {(field) => (
                         <Field>
                             <FieldLabel htmlFor="firstName">First Name</FieldLabel>
@@ -46,10 +59,14 @@ function ProfileForm({ userId, defaultValues }: { userId: string; defaultValues:
                                 onChange={(e) => field.handleChange(e.target.value)}
                                 placeholder="Enter your first name"
                             />
+                            <FormFieldError errors={field.state.meta.errors} />
                         </Field>
                     )}
                 </form.Field>
-                <form.Field name="lastName">
+                <form.Field
+                    name="lastName"
+                    validators={{ onChange: ({ value }) => (value.trim() ? undefined : "Last name is required") }}
+                >
                     {(field) => (
                         <Field>
                             <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
@@ -59,10 +76,17 @@ function ProfileForm({ userId, defaultValues }: { userId: string; defaultValues:
                                 onChange={(e) => field.handleChange(e.target.value)}
                                 placeholder="Enter your last name"
                             />
+                            <FormFieldError errors={field.state.meta.errors} />
                         </Field>
                     )}
                 </form.Field>
-                <form.Field name="username">
+                <form.Field
+                    name="username"
+                    validators={{
+                        onChange: ({ value }) =>
+                            value.trim().length >= 3 ? undefined : "Username must be at least 3 characters",
+                    }}
+                >
                     {(field) => (
                         <Field>
                             <FieldLabel htmlFor="username">Username</FieldLabel>
@@ -72,6 +96,7 @@ function ProfileForm({ userId, defaultValues }: { userId: string; defaultValues:
                                 onChange={(e) => field.handleChange(e.target.value)}
                                 placeholder="Enter your username"
                             />
+                            <FormFieldError errors={field.state.meta.errors} />
                         </Field>
                     )}
                 </form.Field>
@@ -95,10 +120,6 @@ function ChangePasswordForm({ userId }: { userId: string }) {
     const form = useForm({
         defaultValues: { oldPassword: "", password: "", confirmPassword: "" },
         onSubmit: async ({ value }) => {
-            if (value.password !== value.confirmPassword) {
-                toast.error("Passwords do not match");
-                return;
-            }
             try {
                 await changePassword.mutateAsync({
                     userId,
@@ -134,6 +155,7 @@ function ChangePasswordForm({ userId }: { userId: string }) {
                                 onChange={(e) => field.handleChange(e.target.value)}
                                 placeholder="••••••••"
                             />
+                            <FormFieldError errors={field.state.meta.errors} />
                         </Field>
                     )}
                 </form.Field>
@@ -151,12 +173,22 @@ function ChangePasswordForm({ userId }: { userId: string }) {
                                 onChange={(e) => field.handleChange(e.target.value)}
                                 placeholder="••••••••"
                             />
+                            <FormFieldError errors={field.state.meta.errors} />
                         </Field>
                     )}
                 </form.Field>
                 <form.Field
                     name="confirmPassword"
-                    validators={{ onChange: ({ value }) => (value ? undefined : "Please confirm your password") }}
+                    validators={{
+                        onChangeListenTo: ["password"],
+                        onChange: ({ value, fieldApi }) => {
+                            const password = fieldApi.form.getFieldValue("password");
+                            if (value && password && value !== password) {
+                                return "Passwords do not match";
+                            }
+                            return value ? undefined : "Please confirm your password";
+                        },
+                    }}
                 >
                     {(field) => (
                         <Field>
@@ -168,6 +200,7 @@ function ChangePasswordForm({ userId }: { userId: string }) {
                                 onChange={(e) => field.handleChange(e.target.value)}
                                 placeholder="••••••••"
                             />
+                            <FormFieldError errors={field.state.meta.errors} />
                         </Field>
                     )}
                 </form.Field>
@@ -186,7 +219,7 @@ function ChangePasswordForm({ userId }: { userId: string }) {
 }
 
 export default function SettingsPage() {
-    const { data: user, isLoading, isError } = useCurrentUser();
+    const { data: user, isLoading, isError, refetch } = useCurrentUser();
 
     return (
         <AuthGuard requireUnauthenticated={false}>
@@ -217,10 +250,16 @@ export default function SettingsPage() {
                                 {isLoading ? (
                                     <p className="text-sm text-muted-foreground">Loading...</p>
                                 ) : isError || !user ? (
-                                    <p className="text-sm text-muted-foreground">Failed to load profile. Please refresh the page.</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm text-muted-foreground">Failed to load profile.</p>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+                                            Try again
+                                        </Button>
+                                    </div>
                                 ) : (
                                     <ProfileForm
                                         userId={user.id}
+                                        formKey={`${user.id}-${user.updatedAt ?? ""}`}
                                         defaultValues={{
                                             firstName: user.firstName ?? "",
                                             lastName: user.lastName ?? "",
@@ -240,7 +279,12 @@ export default function SettingsPage() {
                                 {isLoading ? (
                                     <p className="text-sm text-muted-foreground">Loading...</p>
                                 ) : isError || !user ? (
-                                    <p className="text-sm text-muted-foreground">Failed to load profile. Please refresh the page.</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm text-muted-foreground">Failed to load profile.</p>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+                                            Try again
+                                        </Button>
+                                    </div>
                                 ) : (
                                     <ChangePasswordForm userId={user.id} />
                                 )}

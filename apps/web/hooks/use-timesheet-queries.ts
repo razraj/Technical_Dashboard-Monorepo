@@ -5,11 +5,11 @@ import {
     createEntry,
     deleteEntry,
     EntryPayload,
-    getProjects,
     getWeekDetail,
     getWeeks,
     updateEntry,
 } from "@/actions/timesheet";
+import { invalidateWeekCaches } from "@/lib/invalidate-week-caches";
 import { queryKeys } from "@/lib/query-keys";
 import { TimesheetScope } from "@/types";
 
@@ -27,21 +27,12 @@ export function useWeekDetail(weekStart: string, options?: { scope?: TimesheetSc
     });
 }
 
-export function useProjects(enabled = true) {
-    return useQuery({
-        queryKey: queryKeys.projects.all,
-        queryFn: getProjects,
-        enabled,
-    });
-}
-
 export function useCreateEntry(weekStart: string) {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: createEntry,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.weeks.detail(weekStart) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.weeks.all });
+            invalidateWeekCaches(queryClient, weekStart);
         },
     });
 }
@@ -52,8 +43,7 @@ export function useUpdateEntry(weekStart: string) {
         mutationFn: ({ entryId, payload }: { entryId: string; payload: Partial<EntryPayload> }) =>
             updateEntry(entryId, payload),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.weeks.detail(weekStart) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.weeks.all });
+            invalidateWeekCaches(queryClient, weekStart);
         },
     });
 }
@@ -63,8 +53,7 @@ export function useDeleteEntry(weekStart: string) {
     return useMutation({
         mutationFn: deleteEntry,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.weeks.detail(weekStart) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.weeks.all });
+            invalidateWeekCaches(queryClient, weekStart);
         },
     });
 }
