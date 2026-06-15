@@ -1,14 +1,23 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-echo "Current branch: $VERCEL_GIT_COMMIT_REF"
+# Vercel Ignored Build Step: exit 1 = build, exit 0 = skip.
+# Only main and dev should trigger deployments for this app.
 
-# Replace "main" and "staging" with the specific branches you want to build
-if [[ "$VERCEL_GIT_COMMIT_REF" == "main" || "$VERCEL_GIT_COMMIT_REF" == "dev" ]] ; then
-  # exit 1 tells Vercel to proceed with the build
-  echo "✅ - Branch allowed. Build can proceed."
-  exit 1;
-else
-  # exit 0 tells Vercel to cancel the build gracefully
-  echo "🛑 - Branch not allowed. Build cancelled."
-  exit 0;
+ALLOWED_BRANCHES=("main" "dev")
+
+echo "Current branch: ${VERCEL_GIT_COMMIT_REF:-<unset>}"
+
+if [[ -z "${VERCEL_GIT_COMMIT_REF:-}" ]]; then
+  echo "Build cancelled: VERCEL_GIT_COMMIT_REF is not set."
+  exit 0
 fi
+
+for branch in "${ALLOWED_BRANCHES[@]}"; do
+  if [[ "$VERCEL_GIT_COMMIT_REF" == "$branch" ]]; then
+    echo "Branch allowed. Build can proceed."
+    exit 1
+  fi
+done
+
+echo "Build cancelled: branch '$VERCEL_GIT_COMMIT_REF' is not allowed (only ${ALLOWED_BRANCHES[*]})."
+exit 0
