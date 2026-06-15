@@ -1,13 +1,13 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { use, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AuthGuard } from "@/components/auth-guard";
 import { WeeksTimesheet } from "@/components/weeks_timesheet";
-import { getWeekDetail } from "@/actions/timesheet";
-import { WeekDetail } from "@/types";
+import { useWeekDetail } from "@/hooks/use-timesheet-queries";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -24,34 +24,25 @@ import { toast } from "@repo/ui/components";
 
 export default function Page({ params }: { params: Promise<{ weekStart: string }> }) {
     const { weekStart } = use(params);
-    const [detail, setDetail] = useState<WeekDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const requestRef = useRef(0);
-
-    const load = useCallback(() => {
-        const token = ++requestRef.current;
-        setLoading(true);
-        setError(null);
-        getWeekDetail(weekStart)
-            .then((data) => {
-                if (token !== requestRef.current) return;
-                setDetail(data);
-            })
-            .catch((err) => {
-                if (token !== requestRef.current) return;
-                const message = err instanceof Error ? err.message : "Failed to load week";
-                setError(message);
-                toast.error(message);
-            })
-            .finally(() => {
-                if (token === requestRef.current) setLoading(false);
-            });
-    }, [weekStart]);
+    const searchParams = useSearchParams();
+    const projectId = searchParams.get("projectId") ?? undefined;
+    const scopeParam = searchParams.get("scope");
+    const scope = scopeParam === "self" ? "self" : undefined;
+    const { data: detail, isLoading, error, refetch } = useWeekDetail(weekStart, { scope, projectId });
 
     useEffect(() => {
-        load();
-    }, [load]);
+        if (error) {
+            const message = error instanceof Error ? error.message : "Failed to load week";
+            toast.error(message);
+        }
+    }, [error]);
+
+    const backHref =
+        projectId != null
+            ? `/dashboard?projectId=${projectId}`
+            : scope === "self"
+              ? "/dashboard?scope=self"
+              : "/dashboard";
 
     return (
         <AuthGuard requireUnauthenticated={false}>
@@ -69,7 +60,9 @@ export default function Page({ params }: { params: Promise<{ weekStart: string }
                                     </BreadcrumbItem>
                                     <BreadcrumbSeparator className="hidden md:block" />
                                     <BreadcrumbItem>
-                                        <BreadcrumbPage>{weekStart}</BreadcrumbPage>
+                                        <BreadcrumbPage>
+                                            {detail?.project?.name ? `${detail.project.name} · ${weekStart}` : weekStart}
+                                        </BreadcrumbPage>
                                     </BreadcrumbItem>
                                 </BreadcrumbList>
                             </Breadcrumb>
@@ -78,13 +71,13 @@ export default function Page({ params }: { params: Promise<{ weekStart: string }
                     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
                         <div>
                             <Button asChild variant="ghost" size="sm">
-                                <Link href="/dashboard">
+                                <Link href={backHref}>
                                     <ArrowLeftIcon className="size-4" />
                                     Back to timesheets
                                 </Link>
                             </Button>
                         </div>
-                        {loading ? (
+                        {isLoading ? (
                             <div className="space-y-4 rounded-xl border bg-card p-6">
                                 <Skeleton className="h-8 w-64" />
                                 <Skeleton className="h-4 w-40" />
@@ -92,13 +85,15 @@ export default function Page({ params }: { params: Promise<{ weekStart: string }
                             </div>
                         ) : error || !detail ? (
                             <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-card p-10 text-center">
-                                <p className="text-sm text-muted-foreground">{error ?? "Week not found."}</p>
-                                <Button variant="outline" size="sm" onClick={load}>
+                                <p className="text-sm text-muted-foreground">
+                                    {error instanceof Error ? error.message : "Week not found."}
+                                </p>
+                                <Button variant="outline" size="sm" onClick={() => refetch()}>
                                     Try again
                                 </Button>
                             </div>
                         ) : (
-                            <WeeksTimesheet detail={detail} onChanged={load} />
+                            <WeeksTimesheet detail={detail} />
                         )}
                     </div>
                 </SidebarInset>

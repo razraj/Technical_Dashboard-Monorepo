@@ -27,8 +27,35 @@ function addDays(d: Date, days: number): Date {
     return out;
 }
 
+function weekdayEntries(
+    userId: string,
+    projectId: string,
+    weeksAgo: number,
+    workType: string,
+    description: string,
+    hours = 8
+) {
+    const monday = mondayOfWeeksAgo(weeksAgo);
+    return [0, 1, 2, 3, 4].map((dayOffset) => ({
+        userId,
+        projectId,
+        date: addDays(monday, dayOffset),
+        hours,
+        workType,
+        description
+    }));
+}
+
 async function main() {
     console.log("Seeding database...");
+
+    // Make the seed idempotent: clear existing rows in FK-safe order
+    // (children before parents) so re-running doesn't hit unique constraints.
+    await prisma.timesheetEntry.deleteMany();
+    await prisma.activityLog.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
+    console.log("Cleared existing data.");
 
     const managerPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
     const manager = await prisma.user.create({
@@ -115,6 +142,74 @@ async function main() {
                 workType: "Bug fixes",
                 description: "Late ticket fix"
             }
+        ]
+    });
+
+    // Dave: 20 entries across four recent weeks (project oversight + reviews).
+    await prisma.timesheetEntry.createMany({
+        data: [
+            ...weekdayEntries(
+                manager.id,
+                project.id,
+                0,
+                "Meetings",
+                "Sprint planning and stakeholder sync"
+            ),
+            ...weekdayEntries(
+                manager.id,
+                project.id,
+                1,
+                "Code review",
+                "Reviewed homepage PRs"
+            ),
+            ...weekdayEntries(
+                manager.id,
+                project.id,
+                2,
+                "Planning",
+                "Roadmap and backlog grooming"
+            ),
+            ...weekdayEntries(
+                manager.id,
+                project.id,
+                3,
+                "Meetings",
+                "Cross-team coordination"
+            )
+        ]
+    });
+
+    // Eve: 20 more entries (weeks 3–6 ago; weeks 1–2 already seeded above).
+    await prisma.timesheetEntry.createMany({
+        data: [
+            ...weekdayEntries(
+                employee.id,
+                project.id,
+                3,
+                "Development",
+                "Component library work"
+            ),
+            ...weekdayEntries(
+                employee.id,
+                project.id,
+                4,
+                "Development",
+                "Responsive layout polish"
+            ),
+            ...weekdayEntries(
+                employee.id,
+                project.id,
+                5,
+                "Bug fixes",
+                "Accessibility and QA fixes"
+            ),
+            ...weekdayEntries(
+                employee.id,
+                project.id,
+                6,
+                "Development",
+                "Initial homepage wireframes"
+            )
         ]
     });
 

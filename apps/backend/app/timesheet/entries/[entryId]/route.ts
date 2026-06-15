@@ -3,6 +3,29 @@ import { updateEntrySchema } from "@/common/ZodSchema";
 import { parseDateOnly, serializeEntry } from "@/lib/timesheet";
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * PATCH /timesheet/entries/[entryId]
+ *
+ * Partially update an existing timesheet entry. Self-only: entry must belong to
+ * the caller and not be soft-deleted.
+ *
+ * **Auth:** Requires `x-user-id` header (injected by `proxy.ts`).
+ *
+ * **Path param:** `entryId` — UUID of the entry to update.
+ *
+ * **Body** (validated by `updateEntrySchema`): at least one of:
+ * - `date` — `YYYY-MM-DD`
+ * - `projectId` — non-deleted project
+ * - `workType` — non-empty string
+ * - `description` — non-empty string
+ * - `hours` — positive number, max 24
+ *
+ * Omitted fields are left unchanged.
+ *
+ * **200 response:** `{ "entry": TimesheetEntry }`
+ *
+ * **Errors:** 400 invalid body/date/project · 401 missing caller · 404 entry not found/not owned · 500 unexpected
+ */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ entryId: string }> }) {
     try {
         const callerId = req.headers.get("x-user-id");
@@ -19,14 +42,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
 
         const existing = await prisma.timesheetEntry.findFirst({
             where: { id: entryId, userId: callerId, deletedAt: null },
-            select: { id: true, projectId: true, taskId: true }
+            select: { id: true }
         });
         if (!existing) {
             return NextResponse.json({ message: "Entry not found" }, { status: 404 });
         }
 
         const data = parsed.data;
-        const nextProjectId = data.projectId ?? existing.projectId;
 
         let parsedDate: Date | undefined;
         if (data.date !== undefined) {
@@ -47,23 +69,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
             }
         }
 
-        const nextTaskId = data.taskId !== undefined ? data.taskId : existing.taskId;
-        const projectChanging = data.projectId !== undefined;
-        const taskChanging = data.taskId !== undefined;
-
-        if (nextTaskId && (projectChanging || taskChanging)) {
-            const task = await prisma.task.findFirst({
-                where: { id: nextTaskId, deletedAt: null },
-                select: { projectId: true }
-            });
-            if (!task) {
-                return NextResponse.json({ message: "Task not found" }, { status: 400 });
-            }
-            if (task.projectId !== nextProjectId) {
-                return NextResponse.json({ message: "Task does not belong to project" }, { status: 400 });
-            }
-        }
-
         const updated = await prisma.timesheetEntry.update({
             where: { id: entryId },
             data: {
@@ -71,12 +76,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
                 ...(data.projectId !== undefined ? { projectId: data.projectId } : {}),
                 ...(data.workType !== undefined ? { workType: data.workType } : {}),
                 ...(data.description !== undefined ? { description: data.description } : {}),
-                ...(data.hours !== undefined ? { hours: data.hours } : {}),
-                ...(data.taskId !== undefined ? { taskId: data.taskId } : {})
+                ...(data.hours !== undefined ? { hours: data.hours } : {})
             },
             include: {
-                project: { select: { id: true, name: true } },
-                task: { select: { id: true, title: true } }
+                project: { select: { id: true, name: true } }
             }
         });
 
@@ -87,6 +90,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
     }
 }
 
+/**
+ * DELETE /timesheet/entries/[entryId]
+ *
+ * Soft-delete a timesheet entry by setting `deletedAt`. Self-only: entry must
+ * belong to the caller and not already be deleted. Soft-deleted entries are
+ * excluded from all read/aggregation endpoints.
+ *
+ * **Auth:** Requires `x-user-id` header (injected by `proxy.ts`).
+ *
+ * **Path param:** `entryId` — UUID of the entry to delete.
+ *
+ * **200 response:** `{ "success": true, "id": "<entryId>" }`
+ *
+ * **Errors:** 401 missing caller · 404 entry not found/not owned · 500 unexpected
+ */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ entryId: string }> }) {
     try {
         const callerId = req.headers.get("x-user-id");

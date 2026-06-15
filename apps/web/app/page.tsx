@@ -1,23 +1,28 @@
 "use client";
 
-import { Button } from "@repo/ui/components/button";
+import { checkAuthStatus } from "@/actions/auth-check";
+import { PageSpinner } from "@/components/page-spinner";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 /**
- * Root page - redirects based on authentication status.
- * If user is logged in → dashboard, else → login.
+ * Root page — redirects to dashboard when session is valid, otherwise to login.
  */
 export default function Page() {
     const router = useRouter();
+    const [checking, setChecking] = useState(true);
 
-    return (
-        <div className="flex items-center justify-center min-h-svh">
-            <div className="flex flex-col items-center justify-center gap-4 w-full max-w-full">
-                <Button variant="outline" type="button" onClick={() => router.replace("/login")}>
-                    Login
-                </Button>
-            </div>
-       
-        </div>
-    );
+    useEffect(() => {
+        checkAuthStatus()
+            .then((authenticated) => {
+                router.replace(authenticated ? "/dashboard" : "/login");
+            })
+            .finally(() => setChecking(false));
+    }, [router]);
+
+    if (checking) {
+        return <PageSpinner className="min-h-svh" label="Redirecting" />;
+    }
+
+    return null;
 }

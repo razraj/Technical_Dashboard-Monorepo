@@ -8,7 +8,8 @@
         "db:migrate": "prisma migrate dev",
         "db:seed": "tsx src/seed.ts",
         "db:reset": "prisma migrate reset",
-        "push": "prisma db push",
+        "db:push": "prisma db push --accept-data-loss",
+        "push": "prisma db push --accept-data-loss",
         "lint": "eslint . --ignore-pattern \"src/generated/**\" --max-warnings 0"
     },
     "exports": {
@@ -26,7 +27,11 @@
         "@repo/eslint-config": "*",
         "@repo/typescript-config": "*",
         "@types/node": "^22.15.3",
+        "@types/react": "19.2.0",
+        "@types/react-dom": "19.2.0",
         "eslint": "^9.39.1",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
         "tsx": "4.19.1",
         "typescript": "5.9.2"
     }

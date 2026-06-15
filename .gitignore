@@ -15,6 +15,10 @@ node_modules
 
 # Testing
 coverage
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Turbo
 .turbo
@@ -47,3 +51,5 @@ docs/postman/Timesheet_APIs.postman_collection.json
 **/*.yarnclean
 skills-lock.json
 /.agents
+/.antigravitycli/
+/docs/

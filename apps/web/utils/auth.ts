@@ -1,10 +1,10 @@
-import { checkAuthStatus } from "@/actions/auth-check";
+import { checkAuthStatus, fetchSession } from "@/actions/auth-check";
 
 /**
- * Check if user is authenticated by checking cookies server-side
- * Note: This checks the auth_token cookie validity server-side.
- * @returns Promise<boolean> - true if user has a valid token cookie, false otherwise
+ * Check if the user has a valid session (verified via GET /api/auth/me).
  */
 export async function isAuthenticated(): Promise<boolean> {
     return await checkAuthStatus();
 }
+
+export { fetchSession };

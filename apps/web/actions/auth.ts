@@ -1,9 +1,14 @@
 import { User } from "@/types";
 import { fetchWithoutAuth } from "@/utils/api";
+import { getSanitizedRedirectPath } from "@/utils/url";
 import { toast } from "@repo/ui/components";
 import { clearUserFromLocalStorage } from "./auth-check";
 
-export async function login(email: string, password: string) {
+export async function login(
+    email: string,
+    password: string,
+    redirectTo = "/dashboard"
+): Promise<User> {
     const data = (await fetchWithoutAuth("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -15,11 +20,11 @@ export async function login(email: string, password: string) {
         throw new Error("Invalid credentials");
     }
 
-    // Store the user in localStorage
     localStorage.setItem("user", JSON.stringify(data.user));
     toast.success("Logged in successfully");
-    window?.location?.replace?.("/dashboard");
-    return data;
+    const destination = getSanitizedRedirectPath(redirectTo);
+    window?.location?.replace?.(destination === "/" ? "/dashboard" : destination);
+    return data.user;
 }
 
 export interface SignupPayload {

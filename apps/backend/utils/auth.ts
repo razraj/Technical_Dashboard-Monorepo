@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { jwtVerify, SignJWT } from "jose";
 
 const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET);
@@ -6,6 +7,13 @@ export const backendUrl =
     process.env.NODE_ENV === "production"
         ? `https://${process.env.DATABASE_HOST?.replace(/\/$/, "")}`
         : "http://localhost:3000";
+
+/** Public web app origin for links in emails (reset password, verify email). */
+export const webUrl =
+    process.env.WEB_URL?.replace(/\/$/, "") ??
+    (process.env.NODE_ENV === "production"
+        ? `https://${process.env.WEB_APP_HOST?.replace(/\/$/, "") ?? "ticktock-webapp.vercel.app"}`
+        : "http://localhost:3001");
 
 export function isEmail(username: string) {
     // Basic email regex

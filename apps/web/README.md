@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# Web app (`apps/web`)
 
-## Getting Started
+Next.js 16 frontend (port **3001**). Browser entry point for the dashboard — all API traffic goes to `/api/*`, which rewrites to the backend.
 
-First, run the development server:
+## Dev
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```sh
+yarn workspace web dev          # http://localhost:3001
+yarn workspace web test:e2e     # Playwright
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Requires backend on port 3000 and env copied via `yarn env:cp` from the root. See [README.md](../../README.md) for full setup.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Dependencies — use workspace packages first
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load Inter, a custom Google Font.
+| Need | Use |
+|------|-----|
+| UI components, toast, styles | `@repo/ui` |
+| Server/API state | `@tanstack/react-query` |
+| Forms | `@tanstack/react-form-nextjs` + `@repo/ui` Field components |
+| API calls | `fetchWithAuth` / `fetchWithoutAuth` from `@/utils/api` |
+| TypeScript / ESLint config | `@repo/typescript-config`, `@repo/eslint-config` |
 
-## Learn More
+Full conventions: [.claude/rules/workspace-dependencies.md](../../.claude/rules/workspace-dependencies.md).
 
-To learn more about Next.js, take a look at the following resources:
+**Do not** import `@repo/db` or Prisma from this app.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project layout
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Path | Purpose |
+|------|---------|
+| `app/` | Next.js App Router pages |
+| `actions/` | Server actions (auth, timesheet, user) — used as React Query `queryFn` / form submit |
+| `hooks/` | TanStack Query hooks (e.g. `use-timesheet-queries.ts`) |
+| `lib/query-keys.ts` | Centralized React Query key factory |
+| `components/` | App-specific components; compose `@repo/ui` primitives |
+| `utils/api.ts` | Authenticated fetch helpers |
+| `e2e/` | Playwright tests |
 
-## Deploy on Vercel
+## Patterns
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Server state (TanStack Query)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Add query keys to `lib/query-keys.ts`.
+2. Add fetch logic in `actions/` if not already present.
+3. Expose a hook in `hooks/` using `useQuery` / `useMutation`.
+4. Wrap the app in `QueryClientProvider` via `components/providers.tsx` (already done).
+
+### Forms (TanStack Form)
+
+1. `useForm` from `@tanstack/react-form-nextjs`.
+2. Render with `@repo/ui/components/field`, `input`, `button`.
+3. Submit via server actions; surface errors with `toast` from `@repo/ui/components`.
+
+See `components/login-form.tsx` and `components/add-entry-modal.tsx`.
+
+### UI
+
+Import from `@repo/ui/components/*`. Add reusable primitives to `packages/ui`, not here.

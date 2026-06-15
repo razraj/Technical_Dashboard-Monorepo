@@ -1,8 +1,7 @@
 // =============================================================================
 // TenT Technical Dashboard — Prisma schema
 // -----------------------------------------------------------------------------
-// Data model for users, projects, planned work (tasks) and logged work
-// (timesheet entries). The connection URL is NOT declared here on purpose: it
+// Data model for users, projects, and logged work (timesheet entries). The connection URL is NOT declared here on purpose: it
 // is injected at runtime from `process.env.DATABASE_URL` via `prisma.config.ts`
 // (see `packages/db/prisma.config.ts`), so the schema stays environment-free.
 // =============================================================================
@@ -31,15 +30,7 @@ datasource db {
 enum Role {
   ADMIN // Full access, including user management.
   MANAGER // Owns projects and reviews team members' work.
-  EMPLOYEE // Default role; logs time and works assigned tasks.
-}
-
-/// Lifecycle of a planned unit of work (a Task), as shown on the board UI.
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  IN_REVIEW
-  COMPLETED
+  EMPLOYEE // Default role; logs time on assigned projects.
 }
 
 // --- MODELS ------------------------------------------------------------------
@@ -89,18 +80,17 @@ model User {
   resetTokenExp          DateTime?
 
   // Soft delete: users are flagged rather than removed to preserve the
-  // integrity of their historical tasks and timesheet entries.
+  // integrity of their historical timesheet entries.
   isDeleted Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // --- Relations ---
-  activityLogs    ActivityLog[]    @relation("UserActivityLogs")
-  timesheets      TimesheetEntry[]
-  managedProjects Project[]        @relation("ProjectManager")
-  createdTasks    Task[]           @relation("TaskCreator")
-  assignedTasks   Task[]           @relation("TaskAssignee")
+  activityLogs       ActivityLog[]    @relation("UserActivityLogs")
+  timesheets         TimesheetEntry[]
+  managedProjects    Project[]        @relation("ProjectManager")
+  projectMemberships ProjectMember[]  @relation("UserProjectMemberships")
   // NOTE: no `@@index([email])` here — `email @unique` already creates a unique
   // index that Postgres uses for equality lookups, so a second index would be
   // redundant and add write overhead.
@@ -109,7 +99,7 @@ model User {
   @@index([isDeleted])
 }
 
-/// A project that groups tasks and timesheet entries, owned by a manager.
+/// A project that groups timesheet entries, owned by a manager.
 model Project {
   id          String  @id @default(uuid())
   name        String
@@ -125,43 +115,10 @@ model Project {
   // No onDelete override => Prisma default `Restrict`: a manager cannot be
   // hard-deleted while they still own projects.
   manager       User             @relation("ProjectManager", fields: [managerId], references: [id])
-  tasks         Task[]
   timesheetLogs TimesheetEntry[] // Time can be booked directly to a project.
+  members       ProjectMember[]  @relation("ProjectMembers")
 
   @@index([managerId])
-}
-
-/// A planned unit of work assigned by managers or employees.
-model Task {
-  id          String     @id @default(uuid())
-  title       String
-  description String?
-  status      TaskStatus @default(TODO)
-
-  estimatedHours Float     @default(0)
-  // `@db.Date` stores a calendar date with no time component / timezone.
-  startDate      DateTime? @db.Date
-  dueDate        DateTime? @db.Date
-
-  projectId  String
-  creatorId  String
-  assigneeId String? // Unassigned tasks are allowed (sit in the backlog).
-
-  // Soft delete (see Project.deletedAt).
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  // --- Relations ---
-  project       Project          @relation(fields: [projectId], references: [id])
-  creator       User             @relation("TaskCreator", fields: [creatorId], references: [id])
-  assignee      User?            @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  timesheetLogs TimesheetEntry[]
-
-  @@index([projectId])
-  @@index([assigneeId]) // "My tasks" lookups.
-  @@index([creatorId]) // FK index: Postgres does not auto-index FKs.
-  @@index([dueDate]) // Due-date sorting / overdue queries.
 }
 
 /// Actual logged time, created via the "Add New Entry" timesheet UI.
@@ -176,7 +133,6 @@ model TimesheetEntry {
 
   userId    String
   projectId String
-  taskId    String? // Optional: links an ad-hoc entry to a planned task.
 
   // Soft delete (see Project.deletedAt).
   deletedAt DateTime?
@@ -186,9 +142,21 @@ model TimesheetEntry {
   // --- Relations ---
   user    User    @relation(fields: [userId], references: [id])
   project Project @relation(fields: [projectId], references: [id])
-  task    Task?   @relation(fields: [taskId], references: [id])
 
   @@index([userId, date]) // Per-user date-range timesheet views.
   @@index([projectId])
-  @@index([taskId]) // FK index for task-rollup queries.
+}
+
+/// Explicit membership record linking a user to a project.
+model ProjectMember {
+  userId    String
+  projectId String
+
+  user    User    @relation("UserProjectMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation("ProjectMembers", fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, projectId])
+  @@index([projectId])
 }

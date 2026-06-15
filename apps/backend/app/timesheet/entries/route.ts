@@ -3,6 +3,26 @@ import { createEntrySchema } from "@/common/ZodSchema";
 import { parseDateOnly, serializeEntry } from "@/lib/timesheet";
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * POST /timesheet/entries
+ *
+ * Create a timesheet entry for the authenticated user (self-only writes).
+ *
+ * **Auth:** Requires `x-user-id` header (injected by `proxy.ts`). Entry is always
+ * owned by the caller; managers cannot create entries on behalf of others.
+ *
+ * **Body** (validated by `createEntrySchema`):
+ * - `date` — `YYYY-MM-DD` (UTC date-only)
+ * - `projectId` — must reference a non-deleted project
+ * - `workType` — non-empty string (e.g. "Development", "Bug fixes")
+ * - `description` — non-empty string
+ * - `hours` — positive number, max 24
+ *
+ * **201 response:** `{ "entry": TimesheetEntry }` — serialized via `serializeEntry`
+ * (includes nested `project: { id, name }`).
+ *
+ * **Errors:** 400 invalid body/date/project · 401 missing caller · 500 unexpected
+ */
 export async function POST(req: NextRequest) {
     try {
         const callerId = req.headers.get("x-user-id");
@@ -16,7 +36,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "Invalid body", errors: parsed.error.flatten() }, { status: 400 });
         }
 
-        const { date, projectId, workType, description, hours, taskId } = parsed.data;
+        const { date, projectId, workType, description, hours } = parsed.data;
 
         let entryDate: Date;
         try {
@@ -33,19 +53,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: "Project not found" }, { status: 400 });
         }
 
-        if (taskId) {
-            const task = await prisma.task.findFirst({
-                where: { id: taskId, deletedAt: null },
-                select: { projectId: true }
-            });
-            if (!task) {
-                return NextResponse.json({ message: "Task not found" }, { status: 400 });
-            }
-            if (task.projectId !== projectId) {
-                return NextResponse.json({ message: "Task does not belong to project" }, { status: 400 });
-            }
-        }
-
         const created = await prisma.timesheetEntry.create({
             data: {
                 userId: callerId,
@@ -53,12 +60,10 @@ export async function POST(req: NextRequest) {
                 hours,
                 workType,
                 description,
-                projectId,
-                taskId: taskId ?? null
+                projectId
             },
             include: {
-                project: { select: { id: true, name: true } },
-                task: { select: { id: true, title: true } }
+                project: { select: { id: true, name: true } }
             }
         });
 

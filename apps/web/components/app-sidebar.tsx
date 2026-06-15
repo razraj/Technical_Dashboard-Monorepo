@@ -5,20 +5,17 @@ import { TeamSwitcher } from "@/components/team-switcher";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@repo/ui/components/sidebar";
 import {
     AudioWaveform,
-    BookOpen,
-    Bot,
     Command,
-    CreditCard,
     GalleryVerticalEnd,
     LucideIcon,
     Settings,
     Settings2,
     SquareTerminal,
-    UsersIcon
+    Briefcase
 } from "lucide-react";
 import * as React from "react";
 import { NavUser } from "./nav-user";
-import { getCurrentUserFromLocalStorage } from "@/actions/auth-check";
+import { fetchSession } from "@/actions/auth-check";
 
 export interface Data {
     user: {
@@ -76,34 +73,19 @@ const data: Data = {
             isActive: true
         },
         {
-            title: "Models",
-            url: "#",
-            icon: Bot
-        },
-        {
-            title: "Documentation",
-            url: "#",
-            icon: BookOpen
+            title: "Projects",
+            url: "/projects",
+            icon: Briefcase,
         },
         {
             title: "Settings",
-            url: "#",
+            url: "/settings",
             icon: Settings2,
             items: [
                 {
-                    title: "General",
-                    url: "#",
+                    title: "Account",
+                    url: "/settings",
                     icon: Settings
-                },
-                {
-                    title: "Team",
-                    url: "#",
-                    icon: UsersIcon
-                },
-                {
-                    title: "Billing",
-                    url: "#",
-                    icon: CreditCard
                 }
             ]
         }
@@ -114,7 +96,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const [user, setUser] = React.useState(data.user);
 
     React.useEffect(() => {
-        getCurrentUserFromLocalStorage().then((u) => {
+        fetchSession().then((u) => {
             if (!u?.id) return;
             const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "User";
             setUser({

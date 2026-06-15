@@ -1,8 +1,19 @@
 "use client";
 
-import { isAuthenticated } from "@/utils/auth";
+import { checkAuthStatus, clearUserFromLocalStorage } from "@/actions/auth-check";
+import { PageSpinner } from "@/components/page-spinner";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+
+function hasCachedUser(): boolean {
+    if (typeof window === "undefined") return false;
+    try {
+        const user = JSON.parse(localStorage.getItem("user") || "{}") as { id?: string };
+        return Boolean(user?.id);
+    } catch {
+        return false;
+    }
+}
 
 interface AuthGuardProps {
     children: React.ReactNode;
@@ -22,57 +33,101 @@ interface AuthGuardProps {
 }
 
 /**
- * Auth guard: uses server-verified token (auth_token cookie) as single source of truth.
- * - Auth routes (requireUnauthenticated): valid token → redirect to dashboard; no token/invalid → show page.
- * - Protected routes: valid token → show page; no token/invalid → redirect to login (and clear stale sessionStorage).
+ * Auth guard: validates session via GET /api/auth/me (cookie is source of truth).
+ * - Auth routes: valid session → redirect away; invalid → show page (clears stale cache).
+ * - Protected routes: valid session → show page; invalid → redirect to login.
  */
-export function AuthGuard({ children, requireUnauthenticated = false, redirectTo = "/login" }: AuthGuardProps) {
+export function AuthGuard({
+    children,
+    requireUnauthenticated = false,
+    redirectTo = "/login",
+    redirectIfAuthenticated = "/dashboard"
+}: AuthGuardProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const [isChecking, setIsChecking] = useState(true);
+    const [isChecking, setIsChecking] = useState(!requireUnauthenticated);
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [isRedirecting, setIsRedirecting] = useState(false);
 
-    const checkAuth = useCallback(async () => {
-        if (requireUnauthenticated) {
-            // Do not rely on localStorage for auth routes. A stale user object can
-            // cause login <-> dashboard redirect loops when cookies are expired.
-            setIsRedirecting(false);
-            setIsChecking(false);
+    // After login, localStorage is populated before navigation — show app shell immediately.
+    useLayoutEffect(() => {
+        if (!requireUnauthenticated && hasCachedUser()) {
             setIsAuthorized(true);
-            return;
-        } else {
-            const authenticated = await isAuthenticated();
+        }
+    }, [requireUnauthenticated]);
+
+    const checkAuth = useCallback(async () => {
+        try {
+            const authenticated = await checkAuthStatus();
+
+            if (requireUnauthenticated) {
+                if (authenticated) {
+                    setIsRedirecting(true);
+                    setIsChecking(false);
+                    setIsAuthorized(false);
+                    router.replace(redirectIfAuthenticated);
+                    return;
+                }
+                setIsRedirecting(false);
+                setIsChecking(false);
+                setIsAuthorized(true);
+                return;
+            }
+
             if (authenticated) {
                 setIsAuthorized(true);
                 setIsChecking(false);
                 return;
-            } else {
-                setIsAuthorized(false);
+            }
+
+            await clearUserFromLocalStorage();
+            setIsAuthorized(false);
+            setIsChecking(false);
+            setIsRedirecting(true);
+            const returnPath = pathname + (typeof window !== "undefined" ? window.location.search : "");
+            const loginUrl =
+                returnPath && returnPath !== "/login"
+                    ? `${redirectTo}?redirect=${encodeURIComponent(returnPath)}`
+                    : redirectTo;
+            router.replace(loginUrl);
+        } catch {
+            if (requireUnauthenticated) {
+                setIsRedirecting(false);
                 setIsChecking(false);
-                router.replace(redirectTo);
+                setIsAuthorized(true);
                 return;
             }
+            await clearUserFromLocalStorage();
+            setIsAuthorized(false);
+            setIsChecking(false);
+            setIsRedirecting(true);
+            router.replace(redirectTo);
         }
-    }, [router, requireUnauthenticated, redirectTo]);
+    }, [router, pathname, requireUnauthenticated, redirectTo, redirectIfAuthenticated]);
 
     useEffect(() => {
-        setIsChecking(true);
+        if (!requireUnauthenticated) {
+            setIsChecking(true);
+        }
         setIsRedirecting(false);
         checkAuth();
-    }, [checkAuth, pathname]);
+    }, [checkAuth, pathname, requireUnauthenticated]);
 
     if (isAuthorized) {
         return <>{children}</>;
-    } else if (isChecking) {
-        return (
-            <div className="flex items-center justify-center min-h-svh">
-                <div className="flex flex-col items-center justify-center gap-4">
-                    <div className="text-muted-foreground">
-                        {isRedirecting ? "Redirecting..." : "Checking authentication..."}
-                    </div>
-                </div>
-            </div>
-        );
     }
+
+    // Auth routes (login): keep the page visible while checking; spinner only when leaving.
+    if (requireUnauthenticated) {
+        if (isRedirecting) {
+            return <PageSpinner className="min-h-svh" label="Redirecting" />;
+        }
+        return <>{children}</>;
+    }
+
+    if (!isChecking && !isRedirecting) {
+        return null;
+    }
+
+    return <PageSpinner className="min-h-svh" label={isRedirecting ? "Redirecting" : "Loading"} />;
 }
