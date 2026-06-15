@@ -10,7 +10,8 @@ import {
     LucideIcon,
     Settings,
     Settings2,
-    SquareTerminal
+    SquareTerminal,
+    Briefcase
 } from "lucide-react";
 import * as React from "react";
 import { NavUser } from "./nav-user";
@@ -70,6 +71,11 @@ const data: Data = {
             url: "/dashboard",
             icon: SquareTerminal,
             isActive: true
+        },
+        {
+            title: "Projects",
+            url: "/projects",
+            icon: Briefcase,
         },
         {
             title: "Settings",

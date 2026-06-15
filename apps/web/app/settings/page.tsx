@@ -1,16 +1,193 @@
 "use client";
 
+import { useForm } from "@tanstack/react-form-nextjs";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AuthGuard } from "@/components/auth-guard";
+import { useCurrentUser, useUpdateProfile, useChangePassword } from "@/hooks/use-user-queries";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@repo/ui/components/breadcrumb";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
+import { Field, FieldGroup, FieldLabel } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
-import { Label } from "@repo/ui/components/label";
 import { Separator } from "@repo/ui/components/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@repo/ui/components/sidebar";
+import { toast } from "@repo/ui/components";
+
+function ProfileForm({ userId, defaultValues }: { userId: string; defaultValues: { firstName: string; lastName: string; username: string } }) {
+    const updateProfile = useUpdateProfile();
+
+    const form = useForm({
+        defaultValues,
+        onSubmit: async ({ value }) => {
+            try {
+                await updateProfile.mutateAsync({ userId, data: value });
+                toast.success("Profile updated");
+            } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Failed to update profile");
+            }
+        },
+    });
+
+    return (
+        <form
+            onSubmit={(e) => {
+                e.preventDefault();
+                void form.handleSubmit();
+            }}
+        >
+            <FieldGroup>
+                <form.Field name="firstName">
+                    {(field) => (
+                        <Field>
+                            <FieldLabel htmlFor="firstName">First Name</FieldLabel>
+                            <Input
+                                id="firstName"
+                                value={field.state.value}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                placeholder="Enter your first name"
+                            />
+                        </Field>
+                    )}
+                </form.Field>
+                <form.Field name="lastName">
+                    {(field) => (
+                        <Field>
+                            <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
+                            <Input
+                                id="lastName"
+                                value={field.state.value}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                placeholder="Enter your last name"
+                            />
+                        </Field>
+                    )}
+                </form.Field>
+                <form.Field name="username">
+                    {(field) => (
+                        <Field>
+                            <FieldLabel htmlFor="username">Username</FieldLabel>
+                            <Input
+                                id="username"
+                                value={field.state.value}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                placeholder="Enter your username"
+                            />
+                        </Field>
+                    )}
+                </form.Field>
+            </FieldGroup>
+            <div className="mt-4 flex justify-end">
+                <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting]}>
+                    {([canSubmit, isSubmitting]) => (
+                        <Button type="submit" disabled={!canSubmit || updateProfile.isPending}>
+                            {isSubmitting || updateProfile.isPending ? "Saving..." : "Save Changes"}
+                        </Button>
+                    )}
+                </form.Subscribe>
+            </div>
+        </form>
+    );
+}
+
+function ChangePasswordForm({ userId }: { userId: string }) {
+    const changePassword = useChangePassword();
+
+    const form = useForm({
+        defaultValues: { oldPassword: "", password: "", confirmPassword: "" },
+        onSubmit: async ({ value }) => {
+            if (value.password !== value.confirmPassword) {
+                toast.error("Passwords do not match");
+                return;
+            }
+            try {
+                await changePassword.mutateAsync({
+                    userId,
+                    data: { oldPassword: value.oldPassword, password: value.password },
+                });
+                toast.success("Password changed");
+                form.reset();
+            } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Failed to change password");
+            }
+        },
+    });
+
+    return (
+        <form
+            onSubmit={(e) => {
+                e.preventDefault();
+                void form.handleSubmit();
+            }}
+        >
+            <FieldGroup>
+                <form.Field
+                    name="oldPassword"
+                    validators={{ onChange: ({ value }) => (value ? undefined : "Current password is required") }}
+                >
+                    {(field) => (
+                        <Field>
+                            <FieldLabel htmlFor="oldPassword">Current Password</FieldLabel>
+                            <Input
+                                id="oldPassword"
+                                type="password"
+                                value={field.state.value}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                placeholder="••••••••"
+                            />
+                        </Field>
+                    )}
+                </form.Field>
+                <form.Field
+                    name="password"
+                    validators={{ onChange: ({ value }) => (value.length >= 8 ? undefined : "Must be at least 8 characters") }}
+                >
+                    {(field) => (
+                        <Field>
+                            <FieldLabel htmlFor="newPassword">New Password</FieldLabel>
+                            <Input
+                                id="newPassword"
+                                type="password"
+                                value={field.state.value}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                placeholder="••••••••"
+                            />
+                        </Field>
+                    )}
+                </form.Field>
+                <form.Field
+                    name="confirmPassword"
+                    validators={{ onChange: ({ value }) => (value ? undefined : "Please confirm your password") }}
+                >
+                    {(field) => (
+                        <Field>
+                            <FieldLabel htmlFor="confirmPassword">Confirm New Password</FieldLabel>
+                            <Input
+                                id="confirmPassword"
+                                type="password"
+                                value={field.state.value}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                placeholder="••••••••"
+                            />
+                        </Field>
+                    )}
+                </form.Field>
+            </FieldGroup>
+            <div className="mt-4 flex justify-end">
+                <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting]}>
+                    {([canSubmit, isSubmitting]) => (
+                        <Button type="submit" disabled={!canSubmit || changePassword.isPending}>
+                            {isSubmitting || changePassword.isPending ? "Updating..." : "Change Password"}
+                        </Button>
+                    )}
+                </form.Subscribe>
+            </div>
+        </form>
+    );
+}
 
 export default function SettingsPage() {
+    const { data: user, isLoading, isError } = useCurrentUser();
+
     return (
         <AuthGuard requireUnauthenticated={false}>
             <SidebarProvider>
@@ -30,34 +207,43 @@ export default function SettingsPage() {
                         </div>
                     </header>
 
-                    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-                        <Card className="max-w-2xl">
+                    <div className="flex flex-1 flex-col gap-6 p-6 max-w-2xl">
+                        <Card>
                             <CardHeader>
-                                <CardTitle>Account Settings</CardTitle>
-                                <CardDescription>Profile and login preferences. Save is disabled for now.</CardDescription>
+                                <CardTitle>Profile</CardTitle>
+                                <CardDescription>Update your display name and username.</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="first-name">First Name</Label>
-                                    <Input id="first-name" placeholder="Enter your first name" />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="last-name">Last Name</Label>
-                                    <Input id="last-name" placeholder="Enter your last name" />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input id="email" type="email" placeholder="name@company.com" />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="password">Password</Label>
-                                    <Input id="password" type="password" placeholder="********" />
-                                </div>
-                                <div className="flex justify-end">
-                                    <Button type="button" disabled>
-                                        Save Changes (Coming Soon)
-                                    </Button>
-                                </div>
+                            <CardContent>
+                                {isLoading ? (
+                                    <p className="text-sm text-muted-foreground">Loading...</p>
+                                ) : isError || !user ? (
+                                    <p className="text-sm text-muted-foreground">Failed to load profile. Please refresh the page.</p>
+                                ) : (
+                                    <ProfileForm
+                                        userId={user.id}
+                                        defaultValues={{
+                                            firstName: user.firstName ?? "",
+                                            lastName: user.lastName ?? "",
+                                            username: user.username ?? "",
+                                        }}
+                                    />
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Change Password</CardTitle>
+                                <CardDescription>Enter your current password and choose a new one.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {isLoading ? (
+                                    <p className="text-sm text-muted-foreground">Loading...</p>
+                                ) : isError || !user ? (
+                                    <p className="text-sm text-muted-foreground">Failed to load profile. Please refresh the page.</p>
+                                ) : (
+                                    <ChangePasswordForm userId={user.id} />
+                                )}
                             </CardContent>
                         </Card>
                     </div>
