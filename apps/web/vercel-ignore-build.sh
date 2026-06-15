@@ -12,7 +12,7 @@
 # 3. Environments → map dev branch to Production (Custom Environment / branch rule)
 # 4. Enable "Automatically expose System Environment Variables"
 
-ALLOWED_BRANCHES=("main" "dev")
+ALLOWED_BRANCHES=("main")
 
 echo "Branch: ${VERCEL_GIT_COMMIT_REF:-<unset>}"
 echo "Environment: ${VERCEL_ENV:-<unset>}"
