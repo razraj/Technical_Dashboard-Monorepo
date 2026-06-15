@@ -20,7 +20,7 @@ import { getProject } from "@/actions/projects";
 
 export default function ProjectsPage() {
     const { data: user } = useCurrentUser();
-    const { data: projects, isLoading } = useProjects();
+    const { data: projects, isLoading, isError } = useProjects();
     const deleteMutation = useDeleteProject();
     const queryClient = useQueryClient();
 
@@ -106,6 +106,12 @@ export default function ProjectsPage() {
                                         <tr>
                                             <td colSpan={3} className="text-center py-8 text-muted-foreground">
                                                 Loading projects...
+                                            </td>
+                                        </tr>
+                                    ) : isError ? (
+                                        <tr>
+                                            <td colSpan={3} className="text-center py-8 text-muted-foreground">
+                                                Failed to load projects. Please try again.
                                             </td>
                                         </tr>
                                     ) : projects?.length === 0 ? (

@@ -50,9 +50,12 @@ export function ProjectFormModal({ isOpen, onClose, project }: ProjectFormModalP
 
     useEffect(() => {
         if (isOpen) {
-            form.reset();
+            form.reset({
+                name: project?.name ?? "",
+                description: project?.description ?? "",
+            });
         }
-    }, [isOpen, form]);
+    }, [isOpen, project, form]);
 
     const isPending = createMutation.isPending || updateMutation.isPending;
 

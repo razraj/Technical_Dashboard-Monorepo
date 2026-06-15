@@ -42,8 +42,8 @@ export async function POST(
             return NextResponse.json({ message: "Invalid data", errors: parsed.error.errors }, { status: 400 });
         }
 
-        const userToAdd = await prisma.user.findUnique({
-            where: { username: parsed.data.username },
+        const userToAdd = await prisma.user.findFirst({
+            where: { username: parsed.data.username, isDeleted: false },
             select: { id: true, username: true, firstName: true, lastName: true, email: true }
         });
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useForm } from "@tanstack/react-form-nextjs";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AuthGuard } from "@/components/auth-guard";
@@ -187,7 +186,7 @@ function ChangePasswordForm({ userId }: { userId: string }) {
 }
 
 export default function SettingsPage() {
-    const { data: user, isLoading } = useCurrentUser();
+    const { data: user, isLoading, isError } = useCurrentUser();
 
     return (
         <AuthGuard requireUnauthenticated={false}>
@@ -215,8 +214,10 @@ export default function SettingsPage() {
                                 <CardDescription>Update your display name and username.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {isLoading || !user ? (
+                                {isLoading ? (
                                     <p className="text-sm text-muted-foreground">Loading...</p>
+                                ) : isError || !user ? (
+                                    <p className="text-sm text-muted-foreground">Failed to load profile. Please refresh the page.</p>
                                 ) : (
                                     <ProfileForm
                                         userId={user.id}
@@ -236,8 +237,10 @@ export default function SettingsPage() {
                                 <CardDescription>Enter your current password and choose a new one.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {!user ? (
+                                {isLoading ? (
                                     <p className="text-sm text-muted-foreground">Loading...</p>
+                                ) : isError || !user ? (
+                                    <p className="text-sm text-muted-foreground">Failed to load profile. Please refresh the page.</p>
                                 ) : (
                                     <ChangePasswordForm userId={user.id} />
                                 )}

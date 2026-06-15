@@ -22,7 +22,7 @@ interface ProjectMembersModalProps {
 }
 
 export function ProjectMembersModal({ isOpen, onClose, projectId }: ProjectMembersModalProps) {
-    const { data: project, isLoading } = useProject(projectId);
+    const { data: project, isLoading, isError } = useProject(projectId);
     const addMemberMutation = useAddProjectMember();
     const removeMemberMutation = useRemoveProjectMember();
 
@@ -102,6 +102,8 @@ export function ProjectMembersModal({ isOpen, onClose, projectId }: ProjectMembe
                         <h4 className="text-sm font-medium mb-2">Current Members</h4>
                         {isLoading ? (
                             <p className="text-sm text-muted-foreground">Loading members...</p>
+                        ) : isError ? (
+                            <p className="text-sm text-muted-foreground">Failed to load members. Please try again.</p>
                         ) : project?.members.length === 0 ? (
                             <p className="text-sm text-muted-foreground">No members assigned to this project.</p>
                         ) : (

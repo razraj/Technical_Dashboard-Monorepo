@@ -7,6 +7,13 @@
   - Made the column `workType` on table `TimesheetEntry` required. This step will fail if there are existing NULL values in that column.
 
 */
+-- Remove incomplete rows before enforcing NOT NULL constraints
+DELETE FROM "TimesheetEntry"
+WHERE "date" IS NULL
+   OR "projectId" IS NULL
+   OR "userId" IS NULL
+   OR "workType" IS NULL;
+
 -- AlterTable
 ALTER TABLE "TimesheetEntry" ALTER COLUMN "date" SET NOT NULL,
 ALTER COLUMN "projectId" SET NOT NULL,
