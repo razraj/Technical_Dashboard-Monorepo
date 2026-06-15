@@ -53,6 +53,7 @@ async function main() {
     // (children before parents) so re-running doesn't hit unique constraints.
     await prisma.timesheetEntry.deleteMany();
     await prisma.activityLog.deleteMany();
+    await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
     await prisma.user.deleteMany();
     console.log("Cleared existing data.");
@@ -93,6 +94,14 @@ async function main() {
         }
     });
     console.log(`Created project: ${project.name}`);
+
+    await prisma.projectMember.createMany({
+        data: [
+            { userId: manager.id, projectId: project.id },
+            { userId: employee.id, projectId: project.id },
+        ],
+    });
+    console.log("Added project members: dave (manager), eve (employee)");
 
     await prisma.activityLog.createMany({
         data: [

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useForm } from "@tanstack/react-form-nextjs";
 import { ProjectDetail } from "@/types";
 import { useCreateProject, useUpdateProject } from "@/hooks/use-project-queries";
+import { FormFieldError } from "@/components/form-field-error";
 import {
     Dialog,
     DialogContent,
@@ -34,7 +35,7 @@ export function ProjectFormModal({ isOpen, onClose, project }: ProjectFormModalP
         },
         onSubmit: async ({ value }) => {
             try {
-                if (isEdit) {
+                if (project) {
                     await updateMutation.mutateAsync({ id: project.id, data: value });
                     toast.success("Project updated");
                 } else {
@@ -55,7 +56,8 @@ export function ProjectFormModal({ isOpen, onClose, project }: ProjectFormModalP
                 description: project?.description ?? "",
             });
         }
-    }, [isOpen, project, form]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when project identity changes
+    }, [isOpen, project?.id, project?.name, project?.description]);
 
     const isPending = createMutation.isPending || updateMutation.isPending;
 
@@ -70,6 +72,7 @@ export function ProjectFormModal({ isOpen, onClose, project }: ProjectFormModalP
                 </DialogHeader>
 
                 <form
+                    key={project?.id ?? "new"}
                     onSubmit={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -92,6 +95,7 @@ export function ProjectFormModal({ isOpen, onClose, project }: ProjectFormModalP
                                             placeholder="e.g. Website Redesign"
                                             autoFocus
                                         />
+                                        <FormFieldError errors={field.state.meta.errors} />
                                     </Field>
                                 )}
                             </form.Field>

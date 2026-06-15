@@ -1,5 +1,6 @@
 import prisma from "@/lib/db";
 import { createEntrySchema } from "@/common/ZodSchema";
+import { canLogTimeToProject, forbiddenResponse, getCaller, unauthorizedResponse } from "@/lib/caller";
 import { parseDateOnly, serializeEntry } from "@/lib/timesheet";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -21,13 +22,13 @@ import { NextRequest, NextResponse } from "next/server";
  * **201 response:** `{ "entry": TimesheetEntry }` — serialized via `serializeEntry`
  * (includes nested `project: { id, name }`).
  *
- * **Errors:** 400 invalid body/date/project · 401 missing caller · 500 unexpected
+ * **Errors:** 400 invalid body/date/project · 401 missing caller · 403 project access denied · 500 unexpected
  */
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
-        const callerId = req.headers.get("x-user-id");
-        if (!callerId) {
-            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        const caller = await getCaller(req.headers.get("x-user-id"));
+        if (!caller) {
+            return unauthorizedResponse();
         }
 
         const body = await req.json().catch(() => null);
@@ -47,29 +48,34 @@ export async function POST(req: NextRequest) {
 
         const project = await prisma.project.findFirst({
             where: { id: projectId, deletedAt: null },
-            select: { id: true }
+            select: { id: true },
         });
         if (!project) {
             return NextResponse.json({ message: "Project not found" }, { status: 400 });
         }
 
+        const allowed = await canLogTimeToProject(caller.id, caller.role, projectId);
+        if (!allowed) {
+            return forbiddenResponse();
+        }
+
         const created = await prisma.timesheetEntry.create({
             data: {
-                userId: callerId,
+                userId: caller.id,
                 date: entryDate,
                 hours,
                 workType,
                 description,
-                projectId
+                projectId,
             },
             include: {
-                project: { select: { id: true, name: true } }
-            }
+                project: { select: { id: true, name: true } },
+            },
         });
 
         return NextResponse.json({ entry: serializeEntry(created) }, { status: 201 });
     } catch (error) {
-        console.log("🚀 ~ POST /timesheet/entries ~ error:", error);
+        console.error("POST /timesheet/entries error:", error);
         return NextResponse.json({ message: "Error creating entry" }, { status: 500 });
     }
 }

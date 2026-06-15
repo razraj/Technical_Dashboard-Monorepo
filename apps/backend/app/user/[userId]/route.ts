@@ -1,36 +1,41 @@
 import prisma from "@/lib/db";
 import { Prisma } from "@repo/db";
 import { NextRequest, NextResponse } from "next/server";
+import { updateProfileSchema } from "@/common/ZodSchema";
+import { isPrismaKnownError } from "@/lib/caller";
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ userId: string }> }): Promise<NextResponse> {
     try {
         const { userId: paramUserId } = await params;
-        const body = await request.json();
         const userId = request.headers.get("x-user-id");
-        if (paramUserId !== userId) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
         if (!userId) {
             return NextResponse.json({ error: "User not found" }, { status: 401 });
         }
-        const data: { firstName?: string; lastName?: string; profilePic?: string; username?: string } = {};
-        if (typeof body.firstName === "string") data.firstName = body.firstName;
-        if (typeof body.lastName === "string") data.lastName = body.lastName;
-        if (typeof body.profilePic === "string") data.profilePic = body.profilePic;
-        if (typeof body.username === "string") data.username = body.username;
+        if (paramUserId !== userId) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const body = await request.json();
+        const parsed = updateProfileSchema.safeParse(body);
+        if (!parsed.success) {
+            return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
+        }
 
         await prisma.user.update({
             where: { id: userId },
-            data
+            data: parsed.data,
         });
         return NextResponse.json({ message: "User updated" });
     } catch (error) {
+        if (isPrismaKnownError(error, "P2002")) {
+            return NextResponse.json({ error: "Username already taken" }, { status: 409 });
+        }
         console.error(error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
     try {
         const id = request.headers.get("x-user-id");
         const user = await prisma.user.findUniqueOrThrow({
@@ -48,8 +53,8 @@ export async function GET(request: NextRequest) {
                 resetTokenExp: true,
                 isDeleted: true,
                 createdAt: true,
-                updatedAt: true
-            }
+                updatedAt: true,
+            },
         });
         return NextResponse.json(user);
     } catch (error) {

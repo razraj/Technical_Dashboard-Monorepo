@@ -7,6 +7,8 @@ export interface User {
     profilePic?: string | null;
     refreshToken?: string | null;
     role: "ADMIN" | "MANAGER" | "EMPLOYEE";
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export const UserResponseDefault = {
@@ -20,6 +22,7 @@ export interface Project {
     id: string;
     name: string;
     description?: string | null;
+    memberCount?: number;
 }
 
 export type WeekStatus = "MISSING" | "INCOMPLETE" | "COMPLETED";

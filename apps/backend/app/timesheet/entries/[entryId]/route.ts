@@ -1,5 +1,6 @@
 import prisma from "@/lib/db";
 import { updateEntrySchema } from "@/common/ZodSchema";
+import { canLogTimeToProject, forbiddenResponse, getCaller, unauthorizedResponse } from "@/lib/caller";
 import { parseDateOnly, serializeEntry } from "@/lib/timesheet";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -26,11 +27,11 @@ import { NextRequest, NextResponse } from "next/server";
  *
  * **Errors:** 400 invalid body/date/project · 401 missing caller · 404 entry not found/not owned · 500 unexpected
  */
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ entryId: string }> }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ entryId: string }> }): Promise<NextResponse> {
     try {
-        const callerId = req.headers.get("x-user-id");
-        if (!callerId) {
-            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        const caller = await getCaller(req.headers.get("x-user-id"));
+        if (!caller) {
+            return unauthorizedResponse();
         }
 
         const { entryId } = await params;
@@ -41,8 +42,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
         }
 
         const existing = await prisma.timesheetEntry.findFirst({
-            where: { id: entryId, userId: callerId, deletedAt: null },
-            select: { id: true }
+            where: { id: entryId, userId: caller.id, deletedAt: null },
+            select: { id: true },
         });
         if (!existing) {
             return NextResponse.json({ message: "Entry not found" }, { status: 404 });
@@ -62,10 +63,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
         if (data.projectId) {
             const project = await prisma.project.findFirst({
                 where: { id: data.projectId, deletedAt: null },
-                select: { id: true }
+                select: { id: true },
             });
             if (!project) {
                 return NextResponse.json({ message: "Project not found" }, { status: 400 });
+            }
+
+            const allowed = await canLogTimeToProject(caller.id, caller.role, data.projectId);
+            if (!allowed) {
+                return forbiddenResponse();
             }
         }
 
@@ -85,7 +91,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ en
 
         return NextResponse.json({ entry: serializeEntry(updated) }, { status: 200 });
     } catch (error) {
-        console.log("🚀 ~ PATCH /timesheet/entries/[entryId] ~ error:", error);
+        console.error("PATCH /timesheet/entries/[entryId] error:", error);
         return NextResponse.json({ message: "Error updating entry" }, { status: 500 });
     }
 }

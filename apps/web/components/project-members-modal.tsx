@@ -2,6 +2,7 @@
 
 import { useForm } from "@tanstack/react-form-nextjs";
 import { useProject, useAddProjectMember, useRemoveProjectMember } from "@/hooks/use-project-queries";
+import { FormFieldError } from "@/components/form-field-error";
 import {
     Dialog,
     DialogContent,
@@ -22,7 +23,7 @@ interface ProjectMembersModalProps {
 }
 
 export function ProjectMembersModal({ isOpen, onClose, projectId }: ProjectMembersModalProps) {
-    const { data: project, isLoading, isError } = useProject(projectId);
+    const { data: project, isLoading, isError, refetch } = useProject(projectId);
     const addMemberMutation = useAddProjectMember();
     const removeMemberMutation = useRemoveProjectMember();
 
@@ -41,7 +42,8 @@ export function ProjectMembersModal({ isOpen, onClose, projectId }: ProjectMembe
         },
     });
 
-    const handleRemove = async (memberId: string) => {
+    const handleRemove = async (memberId: string, memberName: string) => {
+        if (!confirm(`Remove ${memberName} from this project?`)) return;
         try {
             await removeMemberMutation.mutateAsync({ projectId, memberId });
             toast.success("Member removed");
@@ -92,6 +94,7 @@ export function ProjectMembersModal({ isOpen, onClose, projectId }: ProjectMembe
                                                 )}
                                             </form.Subscribe>
                                         </div>
+                                        <FormFieldError errors={field.state.meta.errors} />
                                     </Field>
                                 )}
                             </form.Field>
@@ -103,31 +106,41 @@ export function ProjectMembersModal({ isOpen, onClose, projectId }: ProjectMembe
                         {isLoading ? (
                             <p className="text-sm text-muted-foreground">Loading members...</p>
                         ) : isError ? (
-                            <p className="text-sm text-muted-foreground">Failed to load members. Please try again.</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm text-muted-foreground">Failed to load members.</p>
+                                <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+                                    Try again
+                                </Button>
+                            </div>
                         ) : project?.members.length === 0 ? (
                             <p className="text-sm text-muted-foreground">No members assigned to this project.</p>
                         ) : (
                             <ul className="space-y-2">
-                                {project?.members.map((member) => (
-                                    <li key={member.id} className="flex items-center justify-between bg-muted/50 p-2 rounded-md">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-medium">
-                                                {member.firstName} {member.lastName}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">@{member.username}</span>
-                                        </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                            onClick={() => handleRemove(member.id)}
-                                            disabled={removeMemberMutation.isPending}
-                                            title="Remove member"
+                                {project?.members.map((member) => {
+                                    const memberName =
+                                        [member.firstName, member.lastName].filter(Boolean).join(" ") || member.username;
+                                    return (
+                                        <li
+                                            key={member.id}
+                                            className="flex items-center justify-between bg-muted/50 p-2 rounded-md"
                                         >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </li>
-                                ))}
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium">{memberName}</span>
+                                                <span className="text-xs text-muted-foreground">@{member.username}</span>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                onClick={() => handleRemove(member.id, memberName)}
+                                                disabled={removeMemberMutation.isPending}
+                                                aria-label={`Remove ${memberName} from project`}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         )}
                     </div>

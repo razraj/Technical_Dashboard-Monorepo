@@ -68,3 +68,32 @@ export const updateEntrySchema = z
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field is required"
     });
+
+export const updateProfileSchema = z
+    .object({
+        firstName: z.string().min(1, "First name is required").optional(),
+        lastName: z.string().min(1, "Last name is required").optional(),
+        username: z.string().min(3, "Username must be at least 3 characters").optional(),
+        profilePic: z.string().url().optional(),
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+        message: "At least one field is required",
+    });
+
+export const createProjectSchema = z.object({
+    name: z.string().min(1, "Project name is required"),
+    description: z.string().optional(),
+});
+
+export const updateProjectSchema = z
+    .object({
+        name: z.string().min(1, "Project name is required").optional(),
+        description: z.string().optional(),
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+        message: "At least one field is required",
+    });
+
+export const addMemberSchema = z.object({
+    username: z.string().min(1, "Username is required"),
+});
