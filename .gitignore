@@ -46,10 +46,15 @@ yarn-error.log*
 
 /packages/db/src/generated/client
 **/*R_NOTES.md
-docs/postman/Timesheet_APIs.postman_collection.json
+**/docs/*
 
 **/*.yarnclean
 skills-lock.json
+/.agent
 /.agents
+/.cursor
+/.gemini
+/.vscode
 /.antigravitycli/
 /docs/others
+/.yarn
